@@ -146,9 +146,18 @@ def findOpposing(bam_in, chrom, bp1, bp2, slop):
 
     to_merge = ["out/bp1_refuting_reads.bam", "out/bp2_refuting_reads.bam"]
     merge_bams("sv_oppose.bam", to_merge)
-    print(bp1_refuting_read_count, bp2_refuting_read_count)
+    # print(bp1_refuting_read_count, bp2_refuting_read_count)
     return(bp1_refuting_reads, bp1_refuting_read_count, bp2_refuting_reads, bp2_refuting_read_count)
 
+
+def calculate_allele_freq(bp1_read_count, bp2_read_count, bp1_opposing_read_count, bp2_opposing_read_count):
+    total_support =  bp1_read_count + bp2_read_count
+    total_oppose = bp1_opposing_read_count + bp2_opposing_read_count
+
+    allele_frequency = float(total_support)/(float(total_support)+float(total_oppose))
+    # QA/(QR+QA)
+    print(total_support, total_oppose, allele_frequency)
+    return(allele_frequency)
 
 
 def main():
@@ -179,6 +188,13 @@ def main():
                       help="The chromosome and breakpoints for a " + \
                            "structural variant in the format: " + \
                            "'chrom:bp_1-bp_2'")
+    # 
+    # parser.add_option("-d", \
+    #                   "--debug", \
+    #                   dest="debug",
+    #                   action="store",
+    #                   help="Run in debug mode")
+
 
     options, args = parser.parse_args()
 
@@ -199,14 +215,9 @@ def main():
             bp2 = int(bp2)
             print("-----\nBam file: '%s'\nChrom: %s\nbp1: %s\nbp2: %s\nslop: %s\n-----") % (bam_in, chrom, bp1, bp2, slop)
             bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count = findSupport(bam_in, chrom, bp1, bp2, slop)
-            total_support =  bp1_read_count + bp2_read_count
+            bp1_opposing_reads, bp1_opposing_read_count, bp2_opposing_reads, bp2_opposing_read_count = findOpposing(bam_in, chrom, bp1, bp2, slop)
 
-            bp1_refuting_reads, bp1_refuting_read_count, bp2_refuting_reads, bp2_refuting_read_count = findOpposing(bam_in, chrom, bp1, bp2, slop)
-            total_oppose = bp1_refuting_read_count + bp2_refuting_read_count
-
-            allele_frequency = float(total_support)/(float(total_support)+float(total_oppose))
-            # QA/(QR+QA)
-            print(total_support, total_oppose, allele_frequency)
+            allele_frequency = calculate_allele_freq(bp1_read_count, bp2_read_count, bp1_opposing_read_count, bp2_opposing_read_count)
 
         except IOError as err:
             sys.stderr.write("IOError " + str(err) + "\n");
