@@ -52,8 +52,6 @@ def bp2_supporting_reads(bamFile, chrom, bp1, bp2, slop):
             bp2_reads.append(read.qname)
             count += 1
 
-        # mapped_start = read_end_pos - read.alen
-
         if read.pos +1 == bp2:
             print("* bp2 clipped_read : %s %s [r0: %s, rend: %s]") % (read.qname, read.seq, read.pos, read_end_pos)
             bp2_reads.append(read.qname)
@@ -78,12 +76,79 @@ def merge_bams(out_file, bams):
 def findSupport(bam_in, chrom, bp1, bp2, slop):
     bp1_sv_reads, bp1_read_count = bp1_supporting_reads(bam_in, chrom, bp1, bp2, slop)
     bp2_sv_reads, bp2_read_count = bp2_supporting_reads(bam_in, chrom, bp1, bp2, slop)
-    print(bp2_sv_reads)
-
     to_merge = ["out/bp1_sv_reads.bam", "out/bp2_sv_reads.bam"]
     merge_bams("sv_support.bam", to_merge)
     print(bp1_read_count, bp2_read_count)
     return(bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count)
+
+
+def bp_1_refuting_reads(bamFile, chrom, bp1, bp2, slop):
+    samfile = pysam.Samfile(bamFile, "rb")
+    start=bp1-slop
+    bp1_reads = []
+    out_file = os.path.join(out_dir, "bp1_refuting_reads" + ".bam")
+    bp1_refuting_reads = pysam.AlignmentFile(out_file, "wb", template=samfile)
+    count = 0
+    for read in samfile.fetch(chrom, start, bp1):
+        read_end_pos = read.pos + read.alen
+        mate_end_pos = read.mpos + read.alen
+
+        if read.is_proper_pair and not read.is_reverse and read.mpos > bp1 and not read.is_supplementary:
+            print("* bp1 refuting read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.pos, read_end_pos, read.mpos, mate_end_pos)
+            bp1_refuting_reads.write(read)
+            bp1_reads.append(read.qname)
+            count += 1
+
+        elif read.pos < bp1 and read_end_pos > bp1:
+            print("* bp1 spanning read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.pos, read_end_pos, read.mpos, mate_end_pos)
+            bp1_refuting_reads.write(read)
+            bp1_reads.append(read.qname)
+            count += 1
+
+    bp1_refuting_reads.close()
+    pysam.index(out_file)
+
+    return(bp1_reads, count)
+
+
+def bp_2_refuting_reads(bamFile, chrom, bp1, bp2, slop):
+    samfile = pysam.Samfile(bamFile, "rb")
+    end=bp2+slop
+    bp2_reads = []
+    out_file = os.path.join(out_dir, "bp2_refuting_reads" + ".bam")
+    bp2_refuting_reads = pysam.AlignmentFile(out_file, "wb", template=samfile)
+    count = 0
+    for read in samfile.fetch(chrom, bp2, end):
+        read_end_pos = read.pos + read.alen
+        mate_end_pos = read.mpos + read.alen
+
+        if read.is_proper_pair and read.is_reverse and read.mpos < bp2 and not read.is_supplementary and read.mpos +1 != bp2:
+            print("* bp2 refuting read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.pos, read_end_pos, read.mpos, mate_end_pos)
+            bp2_refuting_reads.write(read)
+            bp2_reads.append(read.qname)
+            count += 1
+
+        elif read.pos < bp1 and read_end_pos > bp1:
+            print("* bp2 spanning read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.pos, read_end_pos, read.mpos, mate_end_pos)
+            bp2_refuting_reads.write(read)
+            bp2_reads.append(read.qname)
+            count += 1
+
+    bp2_refuting_reads.close()
+    pysam.index(out_file)
+
+    return(bp2_reads, count)
+
+
+def findOpposing(bam_in, chrom, bp1, bp2, slop):
+    bp1_refuting_reads, bp1_refuting_read_count = bp_1_refuting_reads(bam_in, chrom, bp1, bp2, slop)
+    bp2_refuting_reads, bp2_refuting_read_count = bp_2_refuting_reads(bam_in, chrom, bp1, bp2, slop)
+
+    to_merge = ["out/bp1_refuting_reads.bam", "out/bp2_refuting_reads.bam"]
+    merge_bams("sv_oppose.bam", to_merge)
+    print(bp1_refuting_read_count, bp2_refuting_read_count)
+    return(bp1_refuting_reads, bp1_refuting_read_count, bp2_refuting_reads, bp2_refuting_read_count)
+
 
 
 def main():
@@ -133,7 +198,15 @@ def main():
             bp1 = int(bp1)
             bp2 = int(bp2)
             print("-----\nBam file: '%s'\nChrom: %s\nbp1: %s\nbp2: %s\nslop: %s\n-----") % (bam_in, chrom, bp1, bp2, slop)
-            findSupport(bam_in, chrom, bp1, bp2, slop)
+            bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count = findSupport(bam_in, chrom, bp1, bp2, slop)
+            total_support =  bp1_read_count + bp2_read_count
+
+            bp1_refuting_reads, bp1_refuting_read_count, bp2_refuting_reads, bp2_refuting_read_count = findOpposing(bam_in, chrom, bp1, bp2, slop)
+            total_oppose = bp1_refuting_read_count + bp2_refuting_read_count
+
+            allele_frequency = float(total_support)/(float(total_support)+float(total_oppose))
+            # QA/(QR+QA)
+            print(total_support, total_oppose, allele_frequency)
 
         except IOError as err:
             sys.stderr.write("IOError " + str(err) + "\n");
