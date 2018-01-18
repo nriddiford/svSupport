@@ -78,11 +78,12 @@ def merge_bams(out_file, bams):
 def findSupport(bam_in, chrom, bp1, bp2, slop):
     bp1_sv_reads, bp1_read_count = bp1_supporting_reads(bam_in, chrom, bp1, bp2, slop)
     bp2_sv_reads, bp2_read_count = bp2_supporting_reads(bam_in, chrom, bp1, bp2, slop)
+    print(bp2_sv_reads)
 
     to_merge = ["out/bp1_sv_reads.bam", "out/bp2_sv_reads.bam"]
     merge_bams("sv_support.bam", to_merge)
     print(bp1_read_count, bp2_read_count)
-    return(bp1_read_count, bp2_read_count)
+    return(bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count)
 
 
 def main():
