@@ -2,6 +2,9 @@ import sys, os, re
 import pysam
 from optparse import OptionParser
 
+# global out_dir
+out_dir = 'out'
+
 def bp1_supporting_reads(bamFile, chrom, bp1, bp2, slop):
     samfile = pysam.Samfile(bamFile, "rb")
     start=bp1-slop
@@ -21,7 +24,6 @@ def bp1_supporting_reads(bamFile, chrom, bp1, bp2, slop):
 
         if read_end_pos == bp1:
             print("* bp1 clipped_read : %s %s [r0: %s, rend: %s]") % (read.qname, read.seq, read.pos, read_end_pos)
-            # print("Supplementary read: %s %s") % (read.qname, read.seq)
             bp1_sv_reads.write(read)
             bp1_reads.append(read.qname)
             count += 1
@@ -114,9 +116,6 @@ def main():
                            "'chrom:bp_1-bp_2'")
 
     options, args = parser.parse_args()
-
-    global out_dir
-    out_dir = 'out'
 
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)

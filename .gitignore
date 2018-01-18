@@ -3,3 +3,4 @@ svSupport.pyc
 __pycache__/*
 out/*
 .gitignore
+.cache/*
