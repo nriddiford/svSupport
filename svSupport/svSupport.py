@@ -255,6 +255,7 @@ def main():
             chrom, bp1, bp2 = re.split(':|-', region)
             bp1 = int(bp1)
             bp2 = int(bp2)
+            slop = int(slop)
             if debug:
                 print_options(bam_in, chrom, bp1, bp2, slop, debug, out_dir)
 

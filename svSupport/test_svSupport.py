@@ -5,7 +5,7 @@ import unittest
 
 from svSupport import *
 
-bam_in = '../data/HUM-1.tagged.filt.SC.RG.bam'
+bam_in = '../data/test.bam'
 chrom = '3L'
 bp1 = 9892365
 bp2 = 9894889
