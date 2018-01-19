@@ -4,7 +4,7 @@ from setuptools import setup
 
 __VERSION__ = '0.1'
 
-requirements = ['pysam']
+requirements = ['pysam', 'pytest]
 
 setup(name='svSupport',
       version=__VERSION__,
