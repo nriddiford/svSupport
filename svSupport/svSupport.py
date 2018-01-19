@@ -131,11 +131,15 @@ def bp_2_opposing_reads(bamFile, chrom, bp1, bp2, slop):
     return(bp2_reads, count)
 
 def merge_bams(out_file, bams):
-    # out_file = os.path.join(out_dir, out_file)
     in_files = ', '.join(bams)
     print("Merging bam files '%s' into '%s'") % (in_files, out_file)
     merge_parameters = ['-f', out_file] + bams
     pysam.merge(*merge_parameters)
+    # Remove individual bp files
+    for bp_file in bams:
+        os.remove(bp_file)
+        os.remove(bp_file + ".bai")
+
     pysam.index(out_file)
 
 
@@ -187,8 +191,6 @@ def print_options(bam_in, chrom, bp1, bp2, slop, debug, out_dir):
     print("----")
 
 
-
-
 def get_args():
   parser = OptionParser()
 
@@ -203,10 +205,9 @@ def get_args():
   parser.add_option("-s", \
                     "--slop", \
                     dest="slop",
-                    # default=500,
                     action="store",
-                    help="Distance from breakpoint to look for reads" + \
-                         "Default: 500")
+                    help="Distance from breakpoint to look for reads " + \
+                         "[Default: 500]")
 
   parser.add_option("-l", \
                     "--loci", \
@@ -220,7 +221,8 @@ def get_args():
                     "--out_dir", \
                     dest="out_dir",
                     action="store",
-                    help="Directory to write output to")
+                    help="Directory to write output to " + \
+                         "[Default: '../out']")
 
 
   parser.add_option("-d", \
@@ -233,7 +235,7 @@ def get_args():
 
   options, args = parser.parse_args()
 
-  if options.in_file is None:
+  if options.in_file is None or options.region is None:
       parser.print_help()
       print
 
