@@ -139,7 +139,7 @@ def merge_bams(out_file, bams):
     pysam.index(out_file)
 
 
-def getReads(bam_in, chrom, bp1, bp2, slop, type):
+def get_reads(bam_in, chrom, bp1, bp2, slop, type):
     if type == 'support':
         bp1_reads, bp1_read_count = bp1_supporting_reads(bam_in, chrom, bp1, bp2, slop)
         bp2_reads, bp2_read_count = bp2_supporting_reads(bam_in, chrom, bp1, bp2, slop)
@@ -187,58 +187,66 @@ def print_options(bam_in, chrom, bp1, bp2, slop, debug, out_dir):
     print("----")
 
 
+
+
+def get_args():
+  parser = OptionParser()
+
+  parser.add_option("-i", \
+                    "--in_file", \
+                    dest="in_file",
+                    action="store",
+                    help="A sorted .bam file containing the reads " + \
+                         "supporting the structural variant calls", \
+                         metavar="FILE")
+
+  parser.add_option("-s", \
+                    "--slop", \
+                    dest="slop",
+                    # default=500,
+                    action="store",
+                    help="Distance from breakpoint to look for reads" + \
+                         "Default: 500")
+
+  parser.add_option("-l", \
+                    "--loci", \
+                    dest="region",
+                    action="store",
+                    help="The chromosome and breakpoints for a " + \
+                         "structural variant in the format: " + \
+                         "'chrom:bp_1-bp_2'")
+
+  parser.add_option("-o", \
+                    "--out_dir", \
+                    dest="out_dir",
+                    action="store",
+                    help="Directory to write output to")
+
+
+  parser.add_option("-d", \
+                    "--debug", \
+                    dest="debug",
+                    action="store_true",
+                    help="Run in debug mode")
+
+  parser.set_defaults(slop=500, out_dir='../out', debug=0)
+
+  options, args = parser.parse_args()
+
+  if options.in_file is None:
+      parser.print_help()
+      print
+
+  return(options, args)
+
+
 def main():
-    parser = OptionParser()
-
-    parser.add_option("-i", \
-                      "--in_file", \
-                      dest="in_file",
-                      action="store",
-                      help="A sorted .bam file containing the reads " + \
-                           "supporting the structural variant calls", \
-                           metavar="FILE")
-
-    parser.add_option("-s", \
-                      "--slop", \
-                      dest="slop",
-                      # default=500,
-                      action="store",
-                      help="Distance from breakpoint to look for reads" + \
-                           "Default: 500")
-
-    parser.add_option("-l", \
-                      "--loci", \
-                      dest="region",
-                      action="store",
-                      help="The chromosome and breakpoints for a " + \
-                           "structural variant in the format: " + \
-                           "'chrom:bp_1-bp_2'")
-
-    parser.add_option("-o", \
-                      "--out_dir", \
-                      dest="out_dir",
-                      action="store",
-                      help="Directory to write output to")
-
-
-    parser.add_option("-d", \
-                      "--debug", \
-                      dest="debug",
-                      action="store_true",
-                      help="Run in debug mode")
-
-    parser.set_defaults(slop=500, out_dir='../out', debug=0)
-
-    options, args = parser.parse_args()
+    options, args = get_args()
 
     global out_dir
     global debug
 
-
-    if options.in_file is None:
-        parser.print_help()
-        print
-    else:
+    if options.in_file is not None:
         try:
             bam_in = options.in_file
             region = options.region
@@ -255,8 +263,8 @@ def main():
                 print_options(bam_in, chrom, bp1, bp2, slop, debug, out_dir)
 
             make_dirs(bam_in, out_dir)
-            bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count = getReads(bam_in, chrom, bp1, bp2, slop, 'support')
-            bp1_opposing_reads, bp1_opposing_read_count, bp2_opposing_reads, bp2_opposing_read_count = getReads(bam_in, chrom, bp1, bp2, slop, 'oppose')
+            bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count = get_reads(bam_in, chrom, bp1, bp2, slop, 'support')
+            bp1_opposing_reads, bp1_opposing_read_count, bp2_opposing_reads, bp2_opposing_read_count = get_reads(bam_in, chrom, bp1, bp2, slop, 'oppose')
 
             allele_frequency = calculate_allele_freq(bp1_read_count, bp2_read_count, bp1_opposing_read_count, bp2_opposing_read_count)
 
