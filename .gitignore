@@ -1,0 +1,6 @@
+*.pyc
+data/*
+out/*
+.cache/*
+svSupport/__pycache__/*
+!data/test*
