@@ -184,9 +184,9 @@ def make_dirs(bam_file, out_dir):
 
 def print_options(bam_in, chrom, bp1, bp2, slop, debug, out_dir):
     options = ['Bam file', 'Chrom', 'bp1', 'bp2', 'slop', 'debug', 'Out dir']
-    given = [bam_in, chrom, bp1, bp2, slop, debug, out_dir]
+    args = [bam_in, chrom, bp1, bp2, slop, debug, out_dir]
     print("----")
-    for index, (value1, value2) in enumerate(zip(options, given)):
+    for index, (value1, value2) in enumerate(zip(options, args)):
          print("%s: %s") % (value1, value2)
     print("----")
 
