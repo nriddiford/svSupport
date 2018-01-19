@@ -233,7 +233,7 @@ def main():
                       action="store_true",
                       help="Run in debug mode")
 
-    parser.set_defaults(slop=500, out_dir='out', debug=0)
+    parser.set_defaults(slop=500, out_dir='../out', debug=0)
 
     options, args = parser.parse_args()
 
