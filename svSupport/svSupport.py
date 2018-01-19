@@ -139,36 +139,29 @@ def merge_bams(out_file, bams):
     pysam.index(out_file)
 
 
-def findSupport(bam_in, chrom, bp1, bp2, slop):
-    bp1_sv_reads, bp1_read_count = bp1_supporting_reads(bam_in, chrom, bp1, bp2, slop)
-    bp2_sv_reads, bp2_read_count = bp2_supporting_reads(bam_in, chrom, bp1, bp2, slop)
+def getReads(bam_in, chrom, bp1, bp2, slop, type):
+    if type == 'support':
+        bp1_reads, bp1_read_count = bp1_supporting_reads(bam_in, chrom, bp1, bp2, slop)
+        bp2_reads, bp2_read_count = bp2_supporting_reads(bam_in, chrom, bp1, bp2, slop)
+        bam1 = os.path.join(out_dir, "bp1_sv_reads" + ".bam")
+        bam2 = os.path.join(out_dir, "bp2_sv_reads" + ".bam")
+        out = os.path.join(out_dir, "sv_support" + ".bam")
+        total_support = bp1_read_count + bp2_read_count
 
-    bam1 = os.path.join(out_dir, "bp1_sv_reads" + ".bam")
-    bam2 = os.path.join(out_dir, "bp2_sv_reads" + ".bam")
-    out = os.path.join(out_dir, "sv_support" + ".bam")
+        print("Found %s reads in support of variant" % total_support)
+    else:
+        bp1_reads, bp1_read_count = bp_1_opposing_reads(bam_in, chrom, bp1, bp2, slop)
+        bp2_reads, bp2_read_count = bp_2_opposing_reads(bam_in, chrom, bp1, bp2, slop)
+        bam1 = os.path.join(out_dir, "bp1_opposing_reads" + ".bam")
+        bam2 = os.path.join(out_dir, "bp2_opposing_reads" + ".bam")
+        out = os.path.join(out_dir, "sv_oppose" + ".bam")
+        total_oppose = bp1_read_count + bp2_read_count
 
-    total_support = bp1_read_count + bp2_read_count
+        print("Found %s reads opposing variant" % total_oppose)
 
-    print("Found %s reads in support of variant" % total_support)
     to_merge = [bam1, bam2]
     merge_bams(out, to_merge)
-    return(bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count)
-
-
-def findOpposing(bam_in, chrom, bp1, bp2, slop):
-    bp1_opposing_reads, bp1_opposing_read_count = bp_1_opposing_reads(bam_in, chrom, bp1, bp2, slop)
-    bp2_opposing_reads, bp2_opposing_read_count = bp_2_opposing_reads(bam_in, chrom, bp1, bp2, slop)
-
-    total_oppose = bp1_opposing_read_count + bp2_opposing_read_count
-    print("Found %s reads opposing variant" % total_oppose)
-
-    bam1 = os.path.join(out_dir, "bp1_opposing_reads" + ".bam")
-    bam2 = os.path.join(out_dir, "bp2_opposing_reads" + ".bam")
-    out = os.path.join(out_dir, "sv_oppose" + ".bam")
-    to_merge = [bam1, bam2]
-    merge_bams(out, to_merge)
-
-    return(bp1_opposing_reads, bp1_opposing_read_count, bp2_opposing_reads, bp2_opposing_read_count)
+    return(bp1_reads, bp1_read_count, bp2_reads, bp2_read_count)
 
 
 def calculate_allele_freq(bp1_read_count, bp2_read_count, bp1_opposing_read_count, bp2_opposing_read_count):
@@ -262,8 +255,8 @@ def main():
                 print_options(bam_in, chrom, bp1, bp2, slop, debug, out_dir)
 
             make_dirs(bam_in, out_dir)
-            bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count = findSupport(bam_in, chrom, bp1, bp2, slop)
-            bp1_opposing_reads, bp1_opposing_read_count, bp2_opposing_reads, bp2_opposing_read_count = findOpposing(bam_in, chrom, bp1, bp2, slop)
+            bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count = getReads(bam_in, chrom, bp1, bp2, slop, 'support')
+            bp1_opposing_reads, bp1_opposing_read_count, bp2_opposing_reads, bp2_opposing_read_count = getReads(bam_in, chrom, bp1, bp2, slop, 'oppose')
 
             allele_frequency = calculate_allele_freq(bp1_read_count, bp2_read_count, bp1_opposing_read_count, bp2_opposing_read_count)
 
