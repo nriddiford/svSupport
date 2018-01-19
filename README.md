@@ -14,3 +14,14 @@ Options:
                         The chromosome and breakpoints for a structural
                         variant in the format: 'chrom:bp_1-bp_2'
 ```
+
+# Run on test data
+* Genome: D_mel_6.12
+* 2.5 kb DEL
+* chrom: 3L
+* bp1: 9892365
+* bp2:9894889
+* 2.5 kb DEL
+* allele frequency: 0.36
+
+`python svSupport.py -i ../data/test.bam -l 3L:9892365-9894889 -d -o ../test_out -s 500`
