@@ -4,3 +4,4 @@ out/*
 .cache/*
 svSupport/__pycache__/*
 !data/test*
+__pycache__/*
