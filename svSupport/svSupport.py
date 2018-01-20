@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import sys, os, re
 import pysam
 from optparse import OptionParser
