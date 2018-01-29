@@ -73,6 +73,7 @@ def bp_1_opposing_reads(bamFile, chrom, bp1, bp2, slop):
     samfile = pysam.Samfile(bamFile, "rb")
     start=bp1-slop
     bp1_reads = []
+    read_names = set()
     out_file = os.path.join(out_dir, "bp1_opposing_reads" + ".bam")
     bp1_opposing_reads = pysam.AlignmentFile(out_file, "wb", template=samfile)
     count = 0
@@ -85,6 +86,7 @@ def bp_1_opposing_reads(bamFile, chrom, bp1, bp2, slop):
                 print("* bp1 opposing read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.pos, read_end_pos, read.mpos, mate_end_pos)
             bp1_opposing_reads.write(read)
             bp1_reads.append(read.qname)
+            read_names.update(read.qname)
             count += 1
 
         elif read.pos < bp1 and read_end_pos > bp1:
@@ -92,8 +94,10 @@ def bp_1_opposing_reads(bamFile, chrom, bp1, bp2, slop):
                 print("* bp1 spanning read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.pos, read_end_pos, read.mpos, mate_end_pos)
             bp1_opposing_reads.write(read)
             bp1_reads.append(read.qname)
+            read_names.update(read.qname)
             count += 1
 
+    print(read_names)
     bp1_opposing_reads.close()
     pysam.index(out_file)
 
@@ -132,7 +136,7 @@ def bp_2_opposing_reads(bamFile, chrom, bp1, bp2, slop):
 
 def merge_bams(out_file, bams):
     in_files = ', '.join(bams)
-    print("Merging bam files '%s' into '%s'") % (in_files, out_file)
+    print("Merging bam files %s into %s") % (in_files, out_file)
     merge_parameters = ['-f', out_file] + bams
     pysam.merge(*merge_parameters)
     # Remove individual bp files
