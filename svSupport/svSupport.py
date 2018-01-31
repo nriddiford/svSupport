@@ -81,7 +81,7 @@ def bp_1_opposing_reads(bamFile, chrom, bp1, bp2, slop):
         read_end_pos = read.pos + read.alen
         mate_end_pos = read.mpos + read.alen
 
-        if read.is_proper_pair and not read.is_reverse and read.mpos > bp1 and not read.is_supplementary:
+        if read.is_proper_pair and not read.is_reverse and read.mpos > bp1 and not read.is_supplementary and not read_end_pos == bp1:
             if debug:
                 print("* bp1 opposing read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.pos, read_end_pos, read.mpos, mate_end_pos)
             bp1_opposing_reads.write(read)
@@ -115,7 +115,7 @@ def bp_2_opposing_reads(bamFile, chrom, bp1, bp2, slop):
         read_end_pos = read.pos + read.alen
         mate_end_pos = read.mpos + read.alen
 
-        if read.is_proper_pair and read.is_reverse and read.mpos < bp2 and not read.is_supplementary and read.mpos +1 != bp2:
+        if read.is_proper_pair and read.is_reverse and read.mpos < bp2 and not read.is_supplementary and read.pos +1 != bp2:
             if debug:
                 print("* bp2 opposing read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.pos, read_end_pos, read.mpos, mate_end_pos)
             bp2_opposing_reads.write(read)
@@ -136,7 +136,7 @@ def bp_2_opposing_reads(bamFile, chrom, bp1, bp2, slop):
 
 def merge_bams(out_file, bams):
     in_files = ', '.join(bams)
-    print("Merging bam files %s into %s") % (in_files, out_file)
+    print("Merging bam files %s into '%s'") % (in_files, out_file)
     merge_parameters = ['-f', out_file] + bams
     pysam.merge(*merge_parameters)
     # Remove individual bp files
