@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import division
 import sys, os, re
 import pysam
 from optparse import OptionParser
@@ -108,7 +109,7 @@ def bp_1_opposing_reads(bamFile, chrom, bp1, bp2, slop):
             read_names.update(read.qname)
             count += 1
 
-    print(read_names)
+    # print(read_names)
     bp1_opposing_reads.close()
     pysam.index(out_file)
 
@@ -186,13 +187,23 @@ def get_reads(bam_in, chrom, bp1, bp2, slop, type):
     return(bp1_reads, bp1_read_count, bp2_reads, bp2_read_count)
 
 
-def calculate_allele_freq(bp1_read_count, bp2_read_count, bp1_opposing_read_count, bp2_opposing_read_count):
+def calculate_allele_freq(bp1_read_count, bp2_read_count, bp1_opposing_read_count, bp2_opposing_read_count, tumour_purity):
     total_support =  bp1_read_count + bp2_read_count
     total_oppose = bp1_opposing_read_count + bp2_opposing_read_count
 
-    allele_frequency = float(total_support)/(float(total_support)+float(total_oppose))
-    # QA/(QR+QA)
-    print("Allele frequency: %s" % allele_frequency)
+    print("Tumour puity set to %s" % tumour_purity)
+
+    allele_frequency = float( total_support/(total_support+total_oppose) )
+
+    if tumour_purity == 1:
+        adj_allele_frequency = allele_frequency
+    else:
+        adj_allele_frequency = float( total_support/( total_support + (total_oppose**tumour_purity) ) )
+
+    allele_frequency = "{:.2f}".format(allele_frequency)
+    adj_allele_frequency = "{:.2f}".format(adj_allele_frequency)
+    print("Adjusted allele frequency from %s to %s") % (allele_frequency, adj_allele_frequency)
+
     return(allele_frequency)
 
 
@@ -210,24 +221,31 @@ def print_options(bam_in, chrom, bp1, bp2, slop, debug, out_dir):
 
 
 def get_args():
-  parser = OptionParser()
+    parser = OptionParser()
 
-  parser.add_option("-i", \
-                    "--in_file", \
-                    dest="in_file",
-                    action="store",
-                    help="A sorted .bam file containing the reads " + \
+    parser.add_option("-i", \
+                      "--in_file", \
+                      dest="in_file",
+                      action="store",
+                      help="A sorted .bam file containing the reads " + \
                          "supporting the structural variant calls", \
                          metavar="FILE")
 
-  parser.add_option("-s", \
+    parser.add_option("-s", \
                     "--slop", \
                     dest="slop",
                     action="store",
                     help="Distance from breakpoint to look for reads " + \
                          "[Default: 500]")
 
-  parser.add_option("-l", \
+    parser.add_option("-p", \
+                     "--purity", \
+                     dest="purity",
+                     action="store",
+                     help="Tumour purity e.g. 0.75 " + \
+                          "[Default: 1]")
+
+    parser.add_option("-l", \
                     "--loci", \
                     dest="region",
                     action="store",
@@ -235,7 +253,7 @@ def get_args():
                          "structural variant in the format: " + \
                          "'chrom:bp_1-bp_2'")
 
-  parser.add_option("-o", \
+    parser.add_option("-o", \
                     "--out_dir", \
                     dest="out_dir",
                     action="store",
@@ -243,21 +261,20 @@ def get_args():
                          "[Default: '../out']")
 
 
-  parser.add_option("-d", \
+    parser.add_option("-d", \
                     "--debug", \
                     dest="debug",
                     action="store_true",
                     help="Run in debug mode")
 
-  parser.set_defaults(slop=500, out_dir='../out', debug=0)
+    parser.set_defaults(slop=500, out_dir='../out', debug=0, purity=1)
+    options, args = parser.parse_args()
 
-  options, args = parser.parse_args()
-
-  if options.in_file is None or options.region is None:
+    if options.in_file is None or options.region is None:
       parser.print_help()
       print
 
-  return(options, args)
+    return(options, args)
 
 
 def main():
@@ -273,6 +290,8 @@ def main():
             slop   = options.slop
             out_dir = options.out_dir
             debug = options.debug
+            purity = float(options.purity)
+
 
             chrom, bp1, bp2 = re.split(':|-', region)
             bp1 = int(bp1)
@@ -286,7 +305,7 @@ def main():
             bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count = get_reads(bam_in, chrom, bp1, bp2, slop, 'support')
             bp1_opposing_reads, bp1_opposing_read_count, bp2_opposing_reads, bp2_opposing_read_count = get_reads(bam_in, chrom, bp1, bp2, slop, 'oppose')
 
-            allele_frequency = calculate_allele_freq(bp1_read_count, bp2_read_count, bp1_opposing_read_count, bp2_opposing_read_count)
+            allele_frequency = calculate_allele_freq(bp1_read_count, bp2_read_count, bp1_opposing_read_count, bp2_opposing_read_count, purity)
 
         except IOError as err:
             sys.stderr.write("IOError " + str(err) + "\n");
