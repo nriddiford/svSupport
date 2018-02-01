@@ -14,19 +14,23 @@ def bp1_supporting_reads(bamFile, chrom, bp1, bp2, slop):
     bp1_sv_reads = pysam.AlignmentFile(out_file, "wb", template=samfile)
     count = 0
     for read in samfile.fetch(chrom, start, bp1):
-        read_end_pos = read.pos + read.alen
-        mate_end_pos = read.mpos + read.alen
+        read_end_pos = read.reference_start + read.alen
+        mate_end_pos = read.next_reference_start + read.alen
 
-        if not read.is_proper_pair and not read.is_reverse and read.mpos > bp2:
+        if read.is_duplicate:
+            print(read.qname)
+            continue
+
+        if not read.is_proper_pair and not read.is_reverse and read.next_reference_start > bp2:
             if debug:
-                print("* bp1 disc_read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.pos, read_end_pos, read.mpos, mate_end_pos)
+                print("* bp1 disc_read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.reference_start, read_end_pos, read.next_reference_start, mate_end_pos)
             bp1_sv_reads.write(read)
             bp1_reads.append(read.qname)
             count += 1
 
-        if read_end_pos == bp1:
+        elif read_end_pos == bp1:
             if debug:
-                print("* bp1 clipped_read : %s %s [r0: %s, rend: %s]") % (read.qname, read.seq, read.pos, read_end_pos)
+                print("* bp1 clipped_read : %s %s [r0: %s, rend: %s]") % (read.qname, read.seq, read.reference_start, read_end_pos)
             bp1_sv_reads.write(read)
             bp1_reads.append(read.qname)
             count += 1
@@ -47,19 +51,22 @@ def bp2_supporting_reads(bamFile, chrom, bp1, bp2, slop):
     count = 0
 
     for read in samfile.fetch(chrom, bp2, end):
-        read_end_pos = read.pos + read.alen
-        mate_end_pos = read.mpos + read.alen
+        read_end_pos = read.reference_start + read.alen
+        mate_end_pos = read.next_reference_start + read.alen
+
+        if read.is_duplicate:
+            continue
 
         if not read.is_proper_pair and read.is_reverse and mate_end_pos < bp1:
             if debug:
-                print("* bp2 disc_read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.pos, read_end_pos, read.mpos, mate_end_pos)
+                print("* bp2 disc_read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.reference_start, read_end_pos, read.next_reference_start, mate_end_pos)
             bp2_sv_reads.write(read)
             bp2_reads.append(read.qname)
             count += 1
 
-        if read.pos +1 == bp2:
+        elif read.reference_start +1 == bp2:
             if debug:
-                print("* bp2 clipped_read : %s %s [r0: %s, rend: %s]") % (read.qname, read.seq, read.pos, read_end_pos)
+                print("* bp2 clipped_read : %s %s [r0: %s, rend: %s]") % (read.qname, read.seq, read.reference_start, read_end_pos)
             bp2_reads.append(read.qname)
             bp2_sv_reads.write(read)
             count += 1
@@ -79,20 +86,23 @@ def bp_1_opposing_reads(bamFile, chrom, bp1, bp2, slop):
     bp1_opposing_reads = pysam.AlignmentFile(out_file, "wb", template=samfile)
     count = 0
     for read in samfile.fetch(chrom, start, bp1):
-        read_end_pos = read.pos + read.alen
-        mate_end_pos = read.mpos + read.alen
+        read_end_pos = read.reference_start + read.alen
+        mate_end_pos = read.next_reference_start + read.alen
 
-        if read.is_proper_pair and not read.is_reverse and read.mpos > bp1 and not read.is_supplementary and not read_end_pos == bp1:
+        if read.is_duplicate:
+            continue
+
+        if read.is_proper_pair and not read.is_reverse and read.next_reference_start > bp1 and not read.is_supplementary and not read_end_pos == bp1:
             if debug:
-                print("* bp1 opposing read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.pos, read_end_pos, read.mpos, mate_end_pos)
+                print("* bp1 opposing read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.reference_start, read_end_pos, read.next_reference_start, mate_end_pos)
             bp1_opposing_reads.write(read)
             bp1_reads.append(read.qname)
             read_names.update(read.qname)
             count += 1
 
-        elif read.pos < bp1 and read_end_pos > bp1:
+        elif read.reference_start < bp1 and read_end_pos > bp1:
             if debug:
-                print("* bp1 spanning read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.pos, read_end_pos, read.mpos, mate_end_pos)
+                print("* bp1 spanning read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.reference_start, read_end_pos, read.next_reference_start, mate_end_pos)
             bp1_opposing_reads.write(read)
             bp1_reads.append(read.qname)
             read_names.update(read.qname)
@@ -113,19 +123,22 @@ def bp_2_opposing_reads(bamFile, chrom, bp1, bp2, slop):
     bp2_opposing_reads = pysam.AlignmentFile(out_file, "wb", template=samfile)
     count = 0
     for read in samfile.fetch(chrom, bp2, end):
-        read_end_pos = read.pos + read.alen
-        mate_end_pos = read.mpos + read.alen
+        read_end_pos = read.reference_start + read.alen
+        mate_end_pos = read.next_reference_start + read.alen
 
-        if read.is_proper_pair and read.is_reverse and read.mpos < bp2 and not read.is_supplementary and read.pos +1 != bp2 and read.mpos +1 != bp2:
+        if read.is_duplicate:
+            continue
+
+        if read.is_proper_pair and read.is_reverse and read.next_reference_start < bp2 and not read.is_supplementary and read.reference_start +1 != bp2 and read.next_reference_start +1 != bp2:
             if debug:
-                print("* bp2 opposing read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.pos, read_end_pos, read.mpos, mate_end_pos)
+                print("* bp2 opposing read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.reference_start, read_end_pos, read.next_reference_start, mate_end_pos)
             bp2_opposing_reads.write(read)
             bp2_reads.append(read.qname)
             count += 1
 
-        elif read.pos < bp1 and read_end_pos > bp1:
+        elif read.reference_start < bp1 and read_end_pos > bp1:
             if debug:
-                print("* bp2 spanning read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.pos, read_end_pos, read.mpos, mate_end_pos)
+                print("* bp2 spanning read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.reference_start, read_end_pos, read.next_reference_start, mate_end_pos)
             bp2_opposing_reads.write(read)
             bp2_reads.append(read.qname)
             count += 1
