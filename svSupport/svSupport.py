@@ -235,6 +235,7 @@ def get_args():
                     "--slop", \
                     dest="slop",
                     action="store",
+                    type="int",
                     help="Distance from breakpoint to look for reads " + \
                          "[Default: 500]")
 
