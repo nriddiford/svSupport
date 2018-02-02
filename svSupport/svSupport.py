@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# from __future__ import division
+from __future__ import division
 import sys, os, re
 import pysam
 from optparse import OptionParser
