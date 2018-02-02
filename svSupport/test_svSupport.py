@@ -76,8 +76,8 @@ class allele_frequency(unittest.TestCase):
     def test_allele_frequency(self):
         bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count = get_reads(bam_in, chrom, bp1, bp2, slop, 'support')
         bp1_opposing_reads, bp1_opposing_read_count, bp2_opposing_reads, bp2_opposing_read_count = get_reads(bam_in, chrom, bp1, bp2, slop, 'oppose')
-        allele_frequency = calculate_allele_freq(bp1_read_count, bp2_read_count, bp1_opposing_read_count, bp2_opposing_read_count)
-        self.assertTrue(allele_frequency == 0.36)
+        allele_frequency = calculate_allele_freq(bp1_read_count, bp2_read_count, bp1_opposing_read_count, bp2_opposing_read_count, 1)
+        self.assertTrue(float(allele_frequency) == 0.36)
 
 
 
