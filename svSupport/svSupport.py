@@ -7,6 +7,7 @@ from optparse import OptionParser
 out_dir = '../out'
 debug = 0
 
+
 def bp1_supporting_reads(bamFile, chrom, bp1, bp2, slop):
     samfile = pysam.Samfile(bamFile, "rb")
     start=bp1-slop
@@ -211,13 +212,43 @@ def make_dirs(bam_file, out_dir):
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-def print_options(bam_in, chrom, bp1, bp2, slop, debug, out_dir):
-    options = ['Bam file', 'Chrom', 'bp1', 'bp2', 'slop', 'debug', 'Out dir']
-    args = [bam_in, chrom, bp1, bp2, slop, debug, out_dir]
+def print_options(bam_in, chrom, bp1, bp2, slop, find_bps, debug, out_dir):
+    options = ['Bam file', 'Chrom', 'bp1', 'bp2', 'slop', 'search_bps', 'debug', 'Out dir']
+    args = [bam_in, chrom, bp1, bp2, slop, find_bps, debug, out_dir]
     print("----")
     for index, (value1, value2) in enumerate(zip(options, args)):
          print("%s: %s") % (value1, value2)
     print("----")
+
+def search_bps(bamFile, chrom, bp, bp_number):
+    samfile = pysam.Samfile(bamFile, "rb")
+    start = bp - 10
+    stop = bp + 10
+
+    print("Searching for %s in region: %s:%s-%s") % (bp_number, chrom, start, stop)
+
+    bp_reads = {}
+    for i in range(start, stop):
+        count = 0
+
+        for read in samfile.fetch(chrom, i-1, i+1):
+            read_end_pos   = read.reference_start + read.alen
+            read_start_pos = read.reference_start
+
+            if bp_number == 'bp1':
+                if read_end_pos == i:
+                    count+=1
+                    bp_reads[i] = count
+
+            else:
+                if read.reference_start +1 == i:
+                    count+=1
+                    bp_reads[i] = count
+
+
+    maxValKey = max(bp_reads, key=bp_reads.get)
+    read_count = bp_reads[maxValKey]
+    return(maxValKey, read_count)
 
 
 def get_args():
@@ -246,6 +277,13 @@ def get_args():
                      help="Tumour purity e.g. 0.75 " + \
                           "[Default: 1]")
 
+    parser.add_option("-f", \
+                     "--find_bps", \
+                     dest="find_bps",
+                     action="store_true",
+                     help="Look for bps if position not exact " + \
+                          "[Default: F ]")
+
     parser.add_option("-l", \
                     "--loci", \
                     dest="region",
@@ -268,7 +306,7 @@ def get_args():
                     action="store_true",
                     help="Run in debug mode")
 
-    parser.set_defaults(slop=500, out_dir='../out', debug=0, purity=1)
+    parser.set_defaults(slop=500, out_dir='../out', debug=0, purity=1, find_bps=0)
     options, args = parser.parse_args()
 
     if options.in_file is None or options.region is None:
@@ -292,7 +330,7 @@ def main():
             out_dir = options.out_dir
             debug = options.debug
             purity = float(options.purity)
-
+            find_bps = options.find_bps
 
             chrom, bp1, bp2 = re.split(':|-', region)
             bp1 = int(bp1)
@@ -300,7 +338,13 @@ def main():
             slop = int(slop)
 
             if debug:
-                print_options(bam_in, chrom, bp1, bp2, slop, debug, out_dir)
+                print_options(bam_in, chrom, bp1, bp2, slop, find_bps, debug, out_dir)
+
+            if find_bps:
+                bp1, bp1_count = search_bps(bam_in, chrom, bp1, 'bp1')
+                bp2, bp2_count = search_bps(bam_in, chrom, bp2, 'bp2')
+                print("Bp1 adjusted to: %s [%s split reads found]") % (bp1, bp1_count)
+                print("Bp1 adjusted to: %s [%s split reads found]") % (bp2, bp2_count)
 
             make_dirs(bam_in, out_dir)
             bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count = get_reads(bam_in, chrom, bp1, bp2, slop, 'support')
