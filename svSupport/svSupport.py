@@ -138,7 +138,7 @@ def bp_2_opposing_reads(bamFile, chrom, bp1, bp2, slop):
             bp2_reads.append(read.qname)
             count += 1
 
-        elif read.reference_start < bp1 and read_end_pos > bp1:
+        elif read.reference_start > bp2 and read_end_pos < bp2:
             if debug:
                 print("* bp2 spanning read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.reference_start, read_end_pos, read.next_reference_start, mate_end_pos)
             bp2_opposing_reads.write(read)
@@ -192,7 +192,7 @@ def calculate_allele_freq(bp1_read_count, bp2_read_count, bp1_opposing_read_coun
     total_support =  bp1_read_count + bp2_read_count
     total_oppose = bp1_opposing_read_count + bp2_opposing_read_count
 
-    print("Tumour puity set to %s" % tumour_purity)
+    print("Tumour purity set to %s" % tumour_purity)
 
     allele_frequency = float( total_support/(total_support+total_oppose) )
 
@@ -322,7 +322,7 @@ def main():
     global out_dir
     global debug
 
-    if options.in_file is not None:
+    if options.in_file is not None and options.region is not None:
         try:
             bam_in = options.in_file
             region = options.region
@@ -344,7 +344,7 @@ def main():
                 bp1, bp1_count = search_bps(bam_in, chrom, bp1, 'bp1')
                 bp2, bp2_count = search_bps(bam_in, chrom, bp2, 'bp2')
                 print("Bp1 adjusted to: %s [%s split reads found]") % (bp1, bp1_count)
-                print("Bp1 adjusted to: %s [%s split reads found]") % (bp2, bp2_count)
+                print("Bp2 adjusted to: %s [%s split reads found]") % (bp2, bp2_count)
 
             make_dirs(bam_in, out_dir)
             bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count = get_reads(bam_in, chrom, bp1, bp2, slop, 'support')
