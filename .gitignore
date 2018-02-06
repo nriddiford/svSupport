@@ -5,3 +5,4 @@ out/*
 svSupport/__pycache__/*
 !data/test*
 __pycache__/*
+test_out/*
