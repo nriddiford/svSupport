@@ -9,11 +9,6 @@ from optparse import OptionParser
 from deletions import Deletions
 
 
-
-out_dir = '../out'
-debug = 0
-
-
 def calculate_allele_freq(bp1_read_count, bp2_read_count, bp1_opposing_read_count, bp2_opposing_read_count, tumour_purity):
     total_support =  bp1_read_count + bp2_read_count
     total_oppose = bp1_opposing_read_count + bp2_opposing_read_count
@@ -39,14 +34,16 @@ def make_dirs(bam_file, out_dir):
         os.makedirs(out_dir)
 
 
-def print_options(bam_in, chrom, bp1, bp2, slop, find_bps, debug, out_dir):
-    options = ['Bam file', 'Chrom', 'bp1', 'bp2', 'slop', 'search_bps', 'debug', 'Out dir']
-    args = [bam_in, chrom, bp1, bp2, slop, find_bps, debug, out_dir]
-    print("----")
+def print_options(bam_in, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir):
+    options = ['Bam file', 'Chrom', 'bp1', 'bp2', 'slop', 'search_bps', 'debug', 'test', 'Out dir']
+    args = [bam_in, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir]
+    print("Running with options:")
+    print("--------")
     for index, (value1, value2) in enumerate(zip(options, args)):
-         print("%s: %s") % (value1, value2)
-    print("----")
-
+         print("o %s: %s") % (value1, value2)
+    print("--------")
+    print("python svSupport.py -i %s -l %s:%s-%s -s %s -f %s -t %s -d %d -o %s") % (bam_in, chrom, bp1, bp2, slop, find_bps, test, debug, out_dir )
+    print("--------")
 
 def search_bps(bamFile, chrom, bp, bp_number):
     samfile = pysam.Samfile(bamFile, "rb")
@@ -134,10 +131,16 @@ def get_args():
                     action="store_true",
                     help="Run in debug mode")
 
-    parser.set_defaults(slop=500, out_dir='../out', debug=0, purity=1, find_bps=0)
+    parser.add_option("-t", \
+                    "--test", \
+                    dest="test",
+                    action="store_true",
+                    help="Run on test data")
+
+    parser.set_defaults(slop=500, out_dir='../out', debug=0, test=False, purity=1, find_bps=0)
     options, args = parser.parse_args()
 
-    if options.in_file is None or options.region is None:
+    if (options.in_file is None or options.region is None) and options.test is False:
       parser.print_help()
       print
 
@@ -150,6 +153,16 @@ def main():
     global out_dir
     global debug
 
+    if options.test is True:
+        print
+        print("Running in test mode...")
+        print
+
+        options.region = '3L:9892365-9894889'
+        options.out_dir = '../test_out'
+        options.in_file = '../data/test.bam'
+        options.debug = True
+
     if options.in_file is not None and options.region is not None:
         try:
             bam_in = options.in_file
@@ -159,6 +172,7 @@ def main():
             debug = options.debug
             purity = float(options.purity)
             find_bps = options.find_bps
+            test = options.test
 
             chrom, bp1, bp2 = re.split(':|-', region)
             bp1 = int(bp1)
@@ -166,7 +180,7 @@ def main():
             slop = int(slop)
 
             if debug:
-                print_options(bam_in, chrom, bp1, bp2, slop, find_bps, debug, out_dir)
+                print_options(bam_in, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir)
 
             #-------------------
             # Adjust breakpoints
@@ -193,7 +207,7 @@ def main():
             #-------------------
             # Calculate af
             #-------------------
-            
+
             allele_frequency = calculate_allele_freq(bp1_read_count, bp2_read_count, bp1_opposing_read_count, bp2_opposing_read_count, purity)
 
         except IOError as err:
