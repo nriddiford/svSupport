@@ -23,9 +23,16 @@ Options:
   -t, --test            Run on test data
 ```
 
+### Installation
+
+`git clone https://github.com/nriddiford/svSupport.git`
+`cd svSupport`
+`pip install .`
+
+### Run on test data
+
 `python svSupport.py -t`
 
-# Run on test data
 * Bam file: ../data/test.bam
 * Chrom: 3L
 * bp1: 9892365
