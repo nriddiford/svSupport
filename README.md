@@ -20,14 +20,18 @@ Options:
   -o OUT_DIR, --out_dir=OUT_DIR
                         Directory to write output to [Default: '../out']
   -d, --debug           Run in debug mode
+  -t, --test            Run on test data
 ```
 
-# Run on test data
-* Genome: D_mel_6.12
-* 2.5 kb DEL
-* chrom: 3L
-* bp1: 9892365
-* bp2:9894889
-* allele frequency: 0.36
+`python svSupport.py -t`
 
-`python svSupport.py -i ../data/test.bam -l 3L:9892365-9894889 -d -o ../test_out -s 500`
+# Run on test data
+* Bam file: ../data/test.bam
+* Chrom: 3L
+* bp1: 9892365
+* bp2: 9894889
+* slop: 500
+* search_bps: 0
+* debug: True
+* test: True
+* Out dir: ../test_out
