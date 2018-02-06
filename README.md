@@ -1,4 +1,6 @@
-[![GitHub package version](https://img.shields.io/github/package-json/v/badges/shields.svg)]()
+version = __VERSION__
+
+[![version](https://img.shields.io/github/package-json/v/badges/shields.svg)]()
 # svSupport
 
 
