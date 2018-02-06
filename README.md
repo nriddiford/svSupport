@@ -25,9 +25,11 @@ Options:
 
 ### Installation
 
-`git clone https://github.com/nriddiford/svSupport.git`
-`cd svSupport`  
-`pip install .`
+```
+git clone https://github.com/nriddiford/svSupport.git
+cd svSupport
+pip install .
+```
 
 ### Run on test data
 
