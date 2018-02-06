@@ -168,6 +168,10 @@ def main():
             if debug:
                 print_options(bam_in, chrom, bp1, bp2, slop, find_bps, debug, out_dir)
 
+            #-------------------
+            # Adjust breakpoints
+            #-------------------
+
             if find_bps:
                 bp1, bp1_count = search_bps(bam_in, chrom, bp1, 'bp1')
                 bp2, bp2_count = search_bps(bam_in, chrom, bp2, 'bp2')
@@ -175,24 +179,21 @@ def main():
                 print("Bp2 adjusted to: %s [%s split reads found]") % (bp2, bp2_count)
 
             make_dirs(bam_in, out_dir)
-            # bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count = get_reads(bam_in, chrom, bp1, bp2, slop, 'support')
-            # bp1_opposing_reads, bp1_opposing_read_count, bp2_opposing_reads, bp2_opposing_read_count = get_reads(bam_in, chrom, bp1, bp2, slop, 'oppose')
+
+            #-------------------
+            # DELETIONS
+            #-------------------
+
             del_support = Deletions(bam_in, chrom, bp1, bp2, slop, 'support', out_dir, debug)
             del_oppose  = Deletions(bam_in, chrom, bp1, bp2, slop, 'oppose', out_dir, debug)
-
 
             bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count = del_support.get_reads()
             bp1_opposing_reads, bp1_opposing_read_count, bp2_opposing_reads, bp2_opposing_read_count = del_oppose.get_reads()
 
-
-            # print(bp1_sv_reads)
-            # bp1_read_count = del_support.bp1_read_count
-            # bp2_read_count = del_support.bp2_read_count
-            #
-            # bp1_opposing_read_count = del_support.bp1_opposing_read_count
-            # bp2_opposing_read_count = del_support.bp2_opposing_read_count
-            #
-            # print(bp1_read_count, bp2_read_count)
+            #-------------------
+            # Calculate af
+            #-------------------
+            
             allele_frequency = calculate_allele_freq(bp1_read_count, bp2_read_count, bp1_opposing_read_count, bp2_opposing_read_count, purity)
 
         except IOError as err:
