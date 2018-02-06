@@ -208,7 +208,8 @@ class Deletions(object):
                 bp2_reads.append(read.qname)
                 count += 1
 
-            elif (read.reference_start > self.bp2 and read_end_pos < self.bp2) or (read.reference_start < self.bp2 and read_end_pos > self.bp2) :
+            elif read.reference_start > self.bp2 and read_end_pos < self.bp2:
+                #or (read.reference_start < self.bp2 and read_end_pos > self.bp2)
                 if self.debug:
                     print("* bp2 spanning read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.reference_start, read_end_pos, read.next_reference_start, mate_end_pos)
                 bp2_opposing_reads.write(read)
