@@ -55,8 +55,8 @@ class Deletions(object):
         count = 0
         with pysam.AlignmentFile(out_file, "wb", template=samfile) as bp1_sv_reads:
             for read in samfile.fetch(self.chrom, start, self.bp1):
-                read_end_pos = read.reference_start + read.alen
-                mate_end_pos = read.next_reference_start + read.alen
+                read_end_pos = read.reference_start + read.reference_length
+                mate_end_pos = read.next_reference_start + read.reference_length
 
                 if read.is_duplicate:
                     print(read.qname)
@@ -92,8 +92,8 @@ class Deletions(object):
         count = 0
 
         for read in samfile.fetch(self.chrom, self.bp2, end):
-            read_end_pos = read.reference_start + read.alen
-            mate_end_pos = read.next_reference_start + read.alen
+            read_end_pos = read.reference_start + read.reference_length
+            mate_end_pos = read.next_reference_start + read.reference_length
 
             if read.is_duplicate:
                 continue
@@ -125,13 +125,27 @@ class Deletions(object):
         bp1_reads = []
         read_names = set()
 
+        """
+
+        #------------------------
+        # pySam variables
+        #------------------------
+
+        o next_reference_start   =   the position of the mate/next read (formerly 'mpos')
+        o reference_start        =   0-based leftmost coordinate (formerly 'pos')
+        o reference_length       =   aligned length of the read on the reference genome
+                                     This is equal to aend - pos. Returns None if not available (formerly 'alen')
+
+        """
+
+
         out_file = os.path.join(self.out_dir, "bp1_opposing_reads" + ".bam")
         bp1_opposing_reads = pysam.AlignmentFile(out_file, "wb", template=samfile)
         count = 0
 
         for read in samfile.fetch(self.chrom, start, self.bp1):
-            read_end_pos = read.reference_start + read.alen
-            mate_end_pos = read.next_reference_start + read.alen
+            read_end_pos = read.reference_start + read.reference_length
+            mate_end_pos = read.next_reference_start + read.reference_length
 
             if read.is_duplicate:
                 continue
@@ -162,18 +176,27 @@ class Deletions(object):
     def bp_2_opposing_reads(self):
         samfile = pysam.Samfile(self.bam_in, "rb")
         end = self.bp2 + self.slop
-        # self.bp1 = bp1
-        # self.bp2 = bp2
-        # samfile = pysam.Samfile(bamFile, "rb")
-        # end=bp2+slop
+
+        """
+        #------------------------
+        # pySam variables
+        #------------------------
+
+        o next_reference_start   =   the position of the mate/next read (formerly 'mpos')
+        o reference_start        =   0-based leftmost coordinate (formerly 'pos')
+        o reference_length       =   aligned length of the read on the reference genome
+                                     This is equal to aend - pos. Returns None if not available (formerly 'alen')
+        """
+
+
         bp2_reads = []
         out_file = os.path.join(self.out_dir, "bp2_opposing_reads" + ".bam")
         bp2_opposing_reads = pysam.AlignmentFile(out_file, "wb", template=samfile)
         count = 0
 
         for read in samfile.fetch(self.chrom, self.bp2, end):
-            read_end_pos = read.reference_start + read.alen
-            mate_end_pos = read.next_reference_start + read.alen
+            read_end_pos = read.reference_start + read.reference_length
+            mate_end_pos = read.next_reference_start + read.reference_length
 
             if read.is_duplicate:
                 continue
@@ -185,7 +208,7 @@ class Deletions(object):
                 bp2_reads.append(read.qname)
                 count += 1
 
-            elif read.reference_start > self.bp2 and read_end_pos < self.bp2:
+            elif (read.reference_start > self.bp2 and read_end_pos < self.bp2) or (read.reference_start < self.bp2 and read_end_pos > self.bp2) :
                 if self.debug:
                     print("* bp2 spanning read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.reference_start, read_end_pos, read.next_reference_start, mate_end_pos)
                 bp2_opposing_reads.write(read)
