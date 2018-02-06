@@ -11,6 +11,9 @@ Options:
                         structural variant calls
   -s SLOP, --slop=SLOP  Distance from breakpoint to look for reads [Default:
                         500]
+  -p PURITY, --purity=PURITY
+                        Tumour purity e.g. 0.75 [Default: 1]
+  -f, --find_bps        Look for bps if position not exact [Default: F ]
   -l REGION, --loci=REGION
                         The chromosome and breakpoints for a structural
                         variant in the format: 'chrom:bp_1-bp_2'
