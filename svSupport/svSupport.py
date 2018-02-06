@@ -1,191 +1,17 @@
 #!/usr/bin/env python
 from __future__ import division
-import sys, os, re
+import os, re
 import pysam
+import sys
+sys.dont_write_bytecode = True
+
 from optparse import OptionParser
+from deletions import Deletions
+
+
 
 out_dir = '../out'
 debug = 0
-
-
-def bp1_supporting_reads(bamFile, chrom, bp1, bp2, slop):
-    samfile = pysam.Samfile(bamFile, "rb")
-    start=bp1-slop
-    bp1_reads = []
-    out_file = os.path.join(out_dir, "bp1_sv_reads" + ".bam")
-    bp1_sv_reads = pysam.AlignmentFile(out_file, "wb", template=samfile)
-    count = 0
-    for read in samfile.fetch(chrom, start, bp1):
-        read_end_pos = read.reference_start + read.alen
-        mate_end_pos = read.next_reference_start + read.alen
-
-        if read.is_duplicate:
-            print(read.qname)
-            continue
-
-        if not read.is_proper_pair and not read.is_reverse and read.next_reference_start > bp2:
-            if debug:
-                print("* bp1 disc_read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.reference_start, read_end_pos, read.next_reference_start, mate_end_pos)
-            bp1_sv_reads.write(read)
-            bp1_reads.append(read.qname)
-            count += 1
-
-        elif read_end_pos == bp1:
-            if debug:
-                print("* bp1 clipped_read : %s %s [r0: %s, rend: %s]") % (read.qname, read.seq, read.reference_start, read_end_pos)
-            bp1_sv_reads.write(read)
-            bp1_reads.append(read.qname)
-            count += 1
-
-    bp1_sv_reads.close()
-    pysam.index(out_file)
-
-    return(bp1_reads, count)
-
-
-def bp2_supporting_reads(bamFile, chrom, bp1, bp2, slop):
-    samfile = pysam.Samfile(bamFile, "rb")
-    end=bp2+slop
-    bp2_reads = []
-    out_file = os.path.join(out_dir, "bp2_sv_reads" + ".bam")
-    bp2_sv_reads = pysam.AlignmentFile(out_file, "wb", template=samfile)
-
-    count = 0
-
-    for read in samfile.fetch(chrom, bp2, end):
-        read_end_pos = read.reference_start + read.alen
-        mate_end_pos = read.next_reference_start + read.alen
-
-        if read.is_duplicate:
-            continue
-
-        if not read.is_proper_pair and read.is_reverse and mate_end_pos < bp1:
-            if debug:
-                print("* bp2 disc_read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.reference_start, read_end_pos, read.next_reference_start, mate_end_pos)
-            bp2_sv_reads.write(read)
-            bp2_reads.append(read.qname)
-            count += 1
-
-        elif read.reference_start +1 == bp2:
-            if debug:
-                print("* bp2 clipped_read : %s %s [r0: %s, rend: %s]") % (read.qname, read.seq, read.reference_start, read_end_pos)
-            bp2_reads.append(read.qname)
-            bp2_sv_reads.write(read)
-            count += 1
-
-    bp2_sv_reads.close()
-    pysam.index(out_file)
-
-    return(bp2_reads, count)
-
-
-def bp_1_opposing_reads(bamFile, chrom, bp1, bp2, slop):
-    samfile = pysam.Samfile(bamFile, "rb")
-    start=bp1-slop
-    bp1_reads = []
-    read_names = set()
-    out_file = os.path.join(out_dir, "bp1_opposing_reads" + ".bam")
-    bp1_opposing_reads = pysam.AlignmentFile(out_file, "wb", template=samfile)
-    count = 0
-    for read in samfile.fetch(chrom, start, bp1):
-        read_end_pos = read.reference_start + read.alen
-        mate_end_pos = read.next_reference_start + read.alen
-
-        if read.is_duplicate:
-            continue
-
-        if read.is_proper_pair and not read.is_reverse and read.next_reference_start > bp1 and not read.is_supplementary and not read_end_pos == bp1:
-            if debug:
-                print("* bp1 opposing read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.reference_start, read_end_pos, read.next_reference_start, mate_end_pos)
-            bp1_opposing_reads.write(read)
-            bp1_reads.append(read.qname)
-            read_names.update(read.qname)
-            count += 1
-
-        elif read.reference_start < bp1 and read_end_pos > bp1:
-            if debug:
-                print("* bp1 spanning read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.reference_start, read_end_pos, read.next_reference_start, mate_end_pos)
-            bp1_opposing_reads.write(read)
-            bp1_reads.append(read.qname)
-            read_names.update(read.qname)
-            count += 1
-
-    # print(read_names)
-    bp1_opposing_reads.close()
-    pysam.index(out_file)
-
-    return(bp1_reads, count)
-
-
-def bp_2_opposing_reads(bamFile, chrom, bp1, bp2, slop):
-    samfile = pysam.Samfile(bamFile, "rb")
-    end=bp2+slop
-    bp2_reads = []
-    out_file = os.path.join(out_dir, "bp2_opposing_reads" + ".bam")
-    bp2_opposing_reads = pysam.AlignmentFile(out_file, "wb", template=samfile)
-    count = 0
-    for read in samfile.fetch(chrom, bp2, end):
-        read_end_pos = read.reference_start + read.alen
-        mate_end_pos = read.next_reference_start + read.alen
-
-        if read.is_duplicate:
-            continue
-
-        if read.is_proper_pair and read.is_reverse and read.next_reference_start < bp2 and not read.is_supplementary and read.reference_start +1 != bp2 and read.next_reference_start +1 != bp2:
-            if debug:
-                print("* bp2 opposing read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.reference_start, read_end_pos, read.next_reference_start, mate_end_pos)
-            bp2_opposing_reads.write(read)
-            bp2_reads.append(read.qname)
-            count += 1
-
-        elif read.reference_start > bp2 and read_end_pos < bp2:
-            if debug:
-                print("* bp2 spanning read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (read.qname, read.seq, read.reference_start, read_end_pos, read.next_reference_start, mate_end_pos)
-            bp2_opposing_reads.write(read)
-            bp2_reads.append(read.qname)
-            count += 1
-
-    bp2_opposing_reads.close()
-    pysam.index(out_file)
-
-    return(bp2_reads, count)
-
-def merge_bams(out_file, bams):
-    in_files = ', '.join(bams)
-    print("Merging bam files %s into '%s'") % (in_files, out_file)
-    merge_parameters = ['-f', out_file] + bams
-    pysam.merge(*merge_parameters)
-    # Remove individual bp files
-    for bp_file in bams:
-        os.remove(bp_file)
-        os.remove(bp_file + ".bai")
-
-    pysam.index(out_file)
-
-
-def get_reads(bam_in, chrom, bp1, bp2, slop, type):
-    if type == 'support':
-        bp1_reads, bp1_read_count = bp1_supporting_reads(bam_in, chrom, bp1, bp2, slop)
-        bp2_reads, bp2_read_count = bp2_supporting_reads(bam_in, chrom, bp1, bp2, slop)
-        bam1 = os.path.join(out_dir, "bp1_sv_reads" + ".bam")
-        bam2 = os.path.join(out_dir, "bp2_sv_reads" + ".bam")
-        out = os.path.join(out_dir, "sv_support" + ".bam")
-        total_support = bp1_read_count + bp2_read_count
-
-        print("Found %s reads in support of variant" % total_support)
-    else:
-        bp1_reads, bp1_read_count = bp_1_opposing_reads(bam_in, chrom, bp1, bp2, slop)
-        bp2_reads, bp2_read_count = bp_2_opposing_reads(bam_in, chrom, bp1, bp2, slop)
-        bam1 = os.path.join(out_dir, "bp1_opposing_reads" + ".bam")
-        bam2 = os.path.join(out_dir, "bp2_opposing_reads" + ".bam")
-        out = os.path.join(out_dir, "sv_oppose" + ".bam")
-        total_oppose = bp1_read_count + bp2_read_count
-
-        print("Found %s reads opposing variant" % total_oppose)
-
-    to_merge = [bam1, bam2]
-    merge_bams(out, to_merge)
-    return(bp1_reads, bp1_read_count, bp2_reads, bp2_read_count)
 
 
 def calculate_allele_freq(bp1_read_count, bp2_read_count, bp1_opposing_read_count, bp2_opposing_read_count, tumour_purity):
@@ -212,6 +38,7 @@ def make_dirs(bam_file, out_dir):
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
+
 def print_options(bam_in, chrom, bp1, bp2, slop, find_bps, debug, out_dir):
     options = ['Bam file', 'Chrom', 'bp1', 'bp2', 'slop', 'search_bps', 'debug', 'Out dir']
     args = [bam_in, chrom, bp1, bp2, slop, find_bps, debug, out_dir]
@@ -219,6 +46,7 @@ def print_options(bam_in, chrom, bp1, bp2, slop, find_bps, debug, out_dir):
     for index, (value1, value2) in enumerate(zip(options, args)):
          print("%s: %s") % (value1, value2)
     print("----")
+
 
 def search_bps(bamFile, chrom, bp, bp_number):
     samfile = pysam.Samfile(bamFile, "rb")
@@ -347,9 +175,24 @@ def main():
                 print("Bp2 adjusted to: %s [%s split reads found]") % (bp2, bp2_count)
 
             make_dirs(bam_in, out_dir)
-            bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count = get_reads(bam_in, chrom, bp1, bp2, slop, 'support')
-            bp1_opposing_reads, bp1_opposing_read_count, bp2_opposing_reads, bp2_opposing_read_count = get_reads(bam_in, chrom, bp1, bp2, slop, 'oppose')
+            # bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count = get_reads(bam_in, chrom, bp1, bp2, slop, 'support')
+            # bp1_opposing_reads, bp1_opposing_read_count, bp2_opposing_reads, bp2_opposing_read_count = get_reads(bam_in, chrom, bp1, bp2, slop, 'oppose')
+            del_support = Deletions(bam_in, chrom, bp1, bp2, slop, 'support', out_dir, debug)
+            del_oppose  = Deletions(bam_in, chrom, bp1, bp2, slop, 'oppose', out_dir, debug)
 
+
+            bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count = del_support.get_reads()
+            bp1_opposing_reads, bp1_opposing_read_count, bp2_opposing_reads, bp2_opposing_read_count = del_oppose.get_reads()
+
+
+            # print(bp1_sv_reads)
+            # bp1_read_count = del_support.bp1_read_count
+            # bp2_read_count = del_support.bp2_read_count
+            #
+            # bp1_opposing_read_count = del_support.bp1_opposing_read_count
+            # bp2_opposing_read_count = del_support.bp2_opposing_read_count
+            #
+            # print(bp1_read_count, bp2_read_count)
             allele_frequency = calculate_allele_freq(bp1_read_count, bp2_read_count, bp1_opposing_read_count, bp2_opposing_read_count, purity)
 
         except IOError as err:
