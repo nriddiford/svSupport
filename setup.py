@@ -2,7 +2,7 @@ import sys
 
 from setuptools import setup
 
-__VERSION__ = '0.2'
+__VERSION__ = '0.3'
 
 requirements = ['python>=2.7.12', 'pysam==0.13', 'pytest']
 
