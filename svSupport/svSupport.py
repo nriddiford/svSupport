@@ -9,9 +9,9 @@ from optparse import OptionParser
 from deletions import Deletions
 
 
-def calculate_allele_freq(bp1_read_count, bp2_read_count, bp1_opposing_read_count, bp2_opposing_read_count, tumour_purity):
-    total_support =  bp1_read_count + bp2_read_count
-    total_oppose = bp1_opposing_read_count + bp2_opposing_read_count
+def calculate_allele_freq(total_support, total_oppose, tumour_purity):
+    # total_support =  bp1_read_count + bp2_read_count
+    # total_oppose = bp1_opposing_read_count + bp2_opposing_read_count
 
     print("Tumour purity set to %s" % tumour_purity)
 
@@ -198,17 +198,20 @@ def main():
             # DELETIONS
             #-------------------
 
-            del_support = Deletions(bam_in, chrom, bp1, bp2, slop, 'support', out_dir, debug)
-            del_oppose  = Deletions(bam_in, chrom, bp1, bp2, slop, 'oppose', out_dir, debug)
+            supporting_reads = []
+            del_support = Deletions(bam_in, chrom, bp1, bp2, slop, 'support', out_dir, supporting_reads, debug)
+            bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count, total_support = del_support.get_reads()
 
-            bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count = del_support.get_reads()
-            bp1_opposing_reads, bp1_opposing_read_count, bp2_opposing_reads, bp2_opposing_read_count = del_oppose.get_reads()
+
+            del_oppose  = Deletions(bam_in, chrom, bp1, bp2, slop, 'oppose', out_dir, total_support, debug)
+
+            bp1_opposing_reads, bp1_opposing_read_count, bp2_opposing_reads, bp2_opposing_read_count, total_oppose = del_oppose.get_reads()
 
             #-------------------
             # Calculate af
             #-------------------
 
-            allele_frequency = calculate_allele_freq(bp1_read_count, bp2_read_count, bp1_opposing_read_count, bp2_opposing_read_count, purity)
+            allele_frequency = calculate_allele_freq(len(total_support), len(total_oppose), purity)
 
         except IOError as err:
             sys.stderr.write("IOError " + str(err) + "\n");
