@@ -33,9 +33,9 @@ def make_dirs(bam_file, out_dir):
         os.makedirs(out_dir)
 
 
-def print_options(bam_in, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir):
-    options = ['Bam file', 'Chrom', 'bp1', 'bp2', 'slop', 'hone_bps', 'debug', 'test', 'Out dir']
-    args = [bam_in, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir]
+def print_options(bam_in, ratio_file, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir):
+    options = ['Bam file', 'Read depth ratio file', 'Chrom', 'bp1', 'bp2', 'slop', 'hone_bps', 'debug', 'test', 'Out dir']
+    args = [bam_in, ratio_file, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir]
     print("Running with options:")
     print("--------")
     for index, (value1, value2) in enumerate(zip(options, args)):
@@ -99,11 +99,7 @@ def guess_type(bamFile, chrom, bp, bp_number, out_dir, debug):
     return(sv_reads, maxValKey)
 
 
-def get_depth(chrom, bp1, bp2):
-
-    ratio_file = '../data/HUM-1.tagged.filt.SC.RG.bam_ratio.txt'
-
-    print(chrom, bp1, bp2)
+def get_depth(chrom, bp1, bp2, ratio_file):
 
     count = 1
     average_ratio = 0
@@ -125,9 +121,6 @@ def get_depth(chrom, bp1, bp2):
 
         allel_freq = (1-average_ratio)
         print("Allele frequency derived from read depth ratio = %s") % (allel_freq)
-
-
-
 
 
 def hone_bps(bam_in, chrom, bp, bp_class):
@@ -221,6 +214,16 @@ def get_args():
                     action="store_true",
                     help="Run on test data")
 
+
+    parser.add_option("-r", \
+                    "--ratio", \
+                    dest="ratio_file",
+                    action="store",
+                    help="Read depth ratio file " + \
+                         "Must be fmtd: chromosome\tstart\tratio")
+
+    # ratio_file = '../data/HUM-1.tagged.filt.SC.RG.bam_ratio.txt'
+
     parser.set_defaults(slop=500, out_dir='../out', debug=False, test=False, purity=1, find_bps=False)
     options, args = parser.parse_args()
 
@@ -247,6 +250,11 @@ def main():
         options.in_file = '../data/test.bam'
         options.debug = True
 
+    if options.ratio_file is not None:
+        ratio_file = options.ratio_file
+    else:
+        ratio_file = 'NA'
+
     if options.in_file is not None and options.region is not None:
         try:
             bam_in   = options.in_file
@@ -257,6 +265,7 @@ def main():
             purity   = float(options.purity)
             find_bps = options.find_bps
             test     = options.test
+            ratio_file = options.ratio_file
 
             chrom, bp1, bp2 = re.split(':|-', region)
             bp1 = int(bp1)
@@ -264,7 +273,7 @@ def main():
             slop = int(slop)
 
             if debug:
-                print_options(bam_in, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir)
+                print_options(bam_in, ratio_file, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir)
 
             #-------------------
             # Adjust breakpoints
@@ -302,10 +311,10 @@ def main():
 
             print(bp1_best_guess, bp2_best_guess)
 
-            # use_depth = 1
-            # if use_depth:
-            #     allele_frequency = get_depth(chrom, bp1, bp2)
-            #     # sys.exit()
+            use_depth = 1
+            if use_depth:
+                allele_frequency = get_depth(chrom, bp1, bp2, ratio_file)
+                # sys.exit()
 
 
             if find_bps:
