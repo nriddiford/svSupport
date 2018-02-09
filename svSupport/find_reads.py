@@ -88,7 +88,7 @@ class FindReads(object):
         pysam.index(support_out)
         pysam.index(oppose_out)
 
-        return(supporting_reads, support_count, opposing_reads, oppose_count)
+        return(supporting_reads, support_count, support_out, opposing_reads, oppose_count, oppose_out)
 
 
     def print_and_write_bp1(self, read, read_bam, read_list, evidence, for_against, read_end_pos, mate_end_pos):
@@ -161,7 +161,7 @@ class FindReads(object):
         pysam.index(support_out)
         pysam.index(oppose_out)
 
-        return(supporting_reads, support_count, opposing_reads, oppose_count)
+        return(supporting_reads, support_count, support_out, opposing_reads, oppose_count, oppose_out)
 
 
     def print_and_write_bp2(self, read, read_bam, read_list, evidence, for_against, read_end_pos, mate_end_pos):

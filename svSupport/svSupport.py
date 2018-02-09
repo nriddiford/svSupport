@@ -9,6 +9,7 @@ from optparse import OptionParser
 from deletions import Deletions
 from inversions import Inversions
 from find_reads import FindReads
+from merge_bams import merge_bams
 
 
 def calculate_allele_freq(total_support, total_oppose, tumour_purity):
@@ -325,15 +326,19 @@ def main():
 
 
             reads = FindReads(bam_in, chrom, bp1, bp2, slop, out_dir, debug, bp1_best_guess, bp2_best_guess)
-            bp1_supporting_reads, bp1_support_count, bp1_opposing_reads, bp1_oppose_count = reads.bp1_reads()
-            bp2_supporting_reads, bp2_support_count, bp2_opposing_reads, bp2_oppose_count = reads.bp2_reads()
+            bp1_supporting_reads, bp1_support_count, bp1_support_bam, bp1_opposing_reads, bp1_oppose_count, bp1_oppose_bam = reads.bp1_reads()
+            bp2_supporting_reads, bp2_support_count, bp2_support_bam, bp2_opposing_reads, bp2_oppose_count, bp2_oppose_bam = reads.bp2_reads()
 
-            total_support = bp1_supporting_reads + bp2_supporting_reads
+            support_out = os.path.join(out_dir, "sv_support" + ".bam")
+            oppose_out = os.path.join(out_dir, "sv_oppose" + ".bam")
+
+            merge_bams(support_out, [bp1_support_bam, bp2_support_bam])
+            merge_bams(oppose_out, [bp1_oppose_bam, bp2_oppose_bam])
 
             all_su_reads = bp1_supporting_reads + bp2_supporting_reads
             total_support = len(set(all_su_reads))
 
-            all_op_reads = bp2_supporting_reads + bp2_opposing_reads
+            all_op_reads = bp1_opposing_reads + bp2_opposing_reads
             total_oppose = len(set(all_op_reads))
 
             print("Found %s reads in support of variant" % total_support)
