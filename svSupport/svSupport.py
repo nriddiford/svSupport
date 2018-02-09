@@ -7,14 +7,12 @@ sys.dont_write_bytecode = True
 from collections import defaultdict
 from optparse import OptionParser
 from deletions import Deletions
+from inversions import Inversions
+
 
 
 def calculate_allele_freq(total_support, total_oppose, tumour_purity):
-    # total_support =  bp1_read_count + bp2_read_count
-    # total_oppose = bp1_opposing_read_count + bp2_opposing_read_count
-
     print("Tumour purity set to %s" % tumour_purity)
-
     allele_frequency = float( total_support/(total_support+total_oppose) )
 
     if tumour_purity == 1:
@@ -58,28 +56,12 @@ def bp_F(read, bp):
     if not read.is_proper_pair and (not read.is_reverse and read.reference_start + read.reference_length > bp):
         return True
 
-
-def FR_disc_reverse(read, bp):
-    if not read.is_proper_pair and (read.is_reverse and not read.mate_is_reverse):
-        return True
-
-
-def FF_disc_reads(read, bp):
-    if not read.is_proper_pair and not read.is_reverse and read.is_read1 and not read.mate_is_reverse:
-        return True
-
-
-def RR_disc_reads(read, bp):
-    if not read.is_proper_pair and read.is_reverse and read.is_read1 and read.mate_is_reverse:
-        return True
-
-
-def guess_type(bamFile, chrom, bp, bp_number, out_dir):
+def guess_type(bamFile, chrom, bp, bp_number, out_dir, debug):
     samfile = pysam.Samfile(bamFile, "rb")
     start = bp - 300
     stop = bp + 300
 
-    print("Searching for SV type in region: %s:%s-%s") % (chrom, start, stop)
+    # print("Searching for SV type in region: %s:%s-%s") % (chrom, start, stop)
 
     sv_reads = defaultdict(int)
 
@@ -108,27 +90,12 @@ def guess_type(bamFile, chrom, bp, bp_number, out_dir):
                     sv_reads['F_bp2'] += 1
                     bpReads.write(read)
 
-
-
     pysam.index(out_file)
 
-    # for dread in del_reads:
-    #     print(dread)
-    #
-    # sv_reads['INV'] = len(inv_reads)
-    # sv_reads['DEL'] = len(del_reads)
-    # sv_reads['DUP'] = len(dup_reads)
-    #
-    # for t in ['INV', 'DUP', 'DEL']:
-    #     print("%s reads: %s") % (t, sv_reads[t] )
+    sv_reads['NA'] = 0
+    maxValKey = max(sv_reads, key=sv_reads.get)
 
-
-    # sv_reads['INV'] = 'value'
-    # maxValKey = max(sv_reads, key=sv_reads.get)
-    #
-    # print(sv_reads[maxValKey])
-    #
-    return(sv_reads)
+    return(sv_reads, maxValKey)
 
 
 def search_bps(bamFile, chrom, bp, bp_number):
@@ -136,7 +103,7 @@ def search_bps(bamFile, chrom, bp, bp_number):
     start = bp - 10
     stop = bp + 10
 
-    print("Searching for %s in region: %s:%s-%s") % (bp_number, chrom, start, stop)
+    # print("Searching for %s in region: %s:%s-%s") % (bp_number, chrom, start, stop)
 
     bp_reads = {}
     for i in range(start, stop):
@@ -155,7 +122,6 @@ def search_bps(bamFile, chrom, bp, bp_number):
                 if read.reference_start +1 == i:
                     count+=1
                     bp_reads[i] = count
-
 
     maxValKey = max(bp_reads, key=bp_reads.get)
     read_count = bp_reads[maxValKey]
@@ -275,12 +241,11 @@ def main():
             find_type = 1;
 
             if find_type:
-                bp1_reads = guess_type(bam_in, chrom, bp1, 'bp1', out_dir)
-                bp1_best_guess = max(bp1_reads, key=bp1_reads.get)
-
-                bp2_reads = guess_type(bam_in, chrom, bp2, 'bp2', out_dir)
+                bp1_reads, bp1_best_guess = guess_type(bam_in, chrom, bp1, 'bp1', out_dir, debug)
+                # bp1_best_guess = max(bp1_reads, key=bp1_reads.get)
+                bp2_reads, bp2_best_guess = guess_type(bam_in, chrom, bp2, 'bp2', out_dir, debug)
                 bp2_best_guess = max(bp2_reads, key=bp2_reads.get)
-                sv_type = ''
+
                 if bp1_best_guess == 'F_bp1' and bp2_best_guess == 'bp2_R':
                     print("Deletion")
                     sv_type = 'DEL'
@@ -293,12 +258,19 @@ def main():
                 elif bp1_best_guess == 'bp1_R' and bp2_best_guess == 'F_bp2':
                     print("Duplication")
                     sv_type = 'DUP'
+                elif bp1_best_guess == 'NA' and bp2_best_guess == 'NA':
+                    print("* Can't classify SV - will continue assuming a deletion as default")
+                    sv_type = 'DEL'
+                else:
+                    print("-> Don't know")
+                    sv_type = ''
 
                 print(bp1_best_guess, bp2_best_guess)
 
             if find_bps:
                 bp1, bp1_count = search_bps(bam_in, chrom, bp1, 'bp1')
                 bp2, bp2_count = search_bps(bam_in, chrom, bp2, 'bp2')
+
                 print("Bp1 adjusted to: %s [%s split reads found]") % (bp1, bp1_count)
                 print("Bp2 adjusted to: %s [%s split reads found]") % (bp2, bp2_count)
 
@@ -314,11 +286,19 @@ def main():
                 del_oppose  = Deletions(bam_in, chrom, bp1, bp2, slop, 'oppose', out_dir, total_support, debug)
                 bp1_opposing_reads, bp1_opposing_read_count, bp2_opposing_reads, bp2_opposing_read_count, total_oppose = del_oppose.get_reads()
 
+            if sv_type == 'INV':
+                supporting_reads = []
+                inv_support = Inversions(bam_in, chrom, bp1, bp2, slop, 'support', out_dir, supporting_reads, debug)
+                bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count, total_support = inv_support.get_reads()
+                inv_oppose  = Inversions(bam_in, chrom, bp1, bp2, slop, 'oppose', out_dir, total_support, debug)
+                bp1_opposing_reads, bp1_opposing_read_count, bp2_opposing_reads, bp2_opposing_read_count, total_oppose = inv_oppose.get_reads()
+
+
             #-------------------
             # Calculate af
             #-------------------
 
-                allele_frequency = calculate_allele_freq(len(total_support), len(total_oppose), purity)
+                # allele_frequency = calculate_allele_freq(len(total_support), len(total_oppose), purity)
 
         except IOError as err:
             sys.stderr.write("IOError " + str(err) + "\n");
