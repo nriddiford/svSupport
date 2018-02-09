@@ -8,6 +8,7 @@ from collections import defaultdict
 from optparse import OptionParser
 from deletions import Deletions
 from inversions import Inversions
+from find_reads import FindReads
 
 
 
@@ -33,7 +34,7 @@ def make_dirs(bam_file, out_dir):
 
 
 def print_options(bam_in, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir):
-    options = ['Bam file', 'Chrom', 'bp1', 'bp2', 'slop', 'search_bps', 'debug', 'test', 'Out dir']
+    options = ['Bam file', 'Chrom', 'bp1', 'bp2', 'slop', 'hone_bps', 'debug', 'test', 'Out dir']
     args = [bam_in, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir]
     print("Running with options:")
     print("--------")
@@ -98,12 +99,41 @@ def guess_type(bamFile, chrom, bp, bp_number, out_dir, debug):
     return(sv_reads, maxValKey)
 
 
-def search_bps(bamFile, chrom, bp, bp_number):
-    samfile = pysam.Samfile(bamFile, "rb")
-    start = bp - 10
-    stop = bp + 10
+def get_depth(chrom, bp1, bp2):
 
-    # print("Searching for %s in region: %s:%s-%s") % (bp_number, chrom, start, stop)
+    ratio_file = '../data/HUM-1.tagged.filt.SC.RG.bam_ratio.txt'
+
+    print(chrom, bp1, bp2)
+
+    count = 1
+    average_ratio = 0
+
+    with open(ratio_file, 'r') as depth_ratios:
+        for l in depth_ratios:
+            parts = l.rstrip().split('\t')
+            if parts[0] == 'Chromosome':
+                continue
+
+            pos = int(parts[1])
+            ratio = float(parts[2])
+
+            if parts[0] == chrom and pos >= bp1 and pos <= bp2:
+                average_ratio = ratio/count
+                count += 1
+
+                print(parts[0], parts[1], parts[2])
+
+        allel_freq = (1-average_ratio)
+        print("Allele frequency derived from read depth ratio = %s") % (allel_freq)
+
+
+
+
+
+def hone_bps(bam_in, chrom, bp, bp_class):
+    samfile = pysam.Samfile(bam_in, "rb")
+    start = bp - 5
+    stop = bp + 5
 
     bp_reads = {}
     for i in range(start, stop):
@@ -113,18 +143,19 @@ def search_bps(bamFile, chrom, bp, bp_number):
             read_end_pos   = read.reference_start + read.alen
             read_start_pos = read.reference_start
 
-            if bp_number == 'bp1':
+            if bp_class == 'F_bp1' or bp_class == 'F_bp2':
                 if read_end_pos == i:
                     count+=1
                     bp_reads[i] = count
 
-            else:
+            elif bp_class == 'bp2_R' or bp_class == 'bp1_R':
                 if read.reference_start +1 == i:
                     count+=1
                     bp_reads[i] = count
 
     maxValKey = max(bp_reads, key=bp_reads.get)
     read_count = bp_reads[maxValKey]
+
     return(maxValKey, read_count)
 
 
@@ -152,14 +183,14 @@ def get_args():
                      dest="purity",
                      action="store",
                      help="Tumour purity e.g. 0.75 " + \
-                          "[Default: 1]")
+                          "[Default: True]")
 
     parser.add_option("-f", \
                      "--find_bps", \
                      dest="find_bps",
                      action="store_true",
                      help="Look for bps if position not exact " + \
-                          "[Default: F ]")
+                          "[Default: False]")
 
     parser.add_option("-l", \
                     "--loci", \
@@ -181,7 +212,8 @@ def get_args():
                     "--debug", \
                     dest="debug",
                     action="store_true",
-                    help="Run in debug mode")
+                    help="Run in debug mode "  + \
+                         "[Default: False]")
 
     parser.add_option("-t", \
                     "--test", \
@@ -189,7 +221,7 @@ def get_args():
                     action="store_true",
                     help="Run on test data")
 
-    parser.set_defaults(slop=500, out_dir='../out', debug=0, test=False, purity=1, find_bps=0)
+    parser.set_defaults(slop=500, out_dir='../out', debug=False, test=False, purity=1, find_bps=False)
     options, args = parser.parse_args()
 
     if (options.in_file is None or options.region is None) and options.test is False:
@@ -217,14 +249,14 @@ def main():
 
     if options.in_file is not None and options.region is not None:
         try:
-            bam_in = options.in_file
-            region = options.region
-            slop   = options.slop
-            out_dir = options.out_dir
-            debug = options.debug
-            purity = float(options.purity)
+            bam_in   = options.in_file
+            region   = options.region
+            slop     = options.slop
+            out_dir  = options.out_dir
+            debug    = options.debug
+            purity   = float(options.purity)
             find_bps = options.find_bps
-            test = options.test
+            test     = options.test
 
             chrom, bp1, bp2 = re.split(':|-', region)
             bp1 = int(bp1)
@@ -265,16 +297,41 @@ def main():
                     print("-> Don't know")
                     sv_type = ''
 
-                print(bp1_best_guess, bp2_best_guess)
+            else:
+                bp1_best_guess, bp2_best_guess = 'F_bp1', 'bp2_R'
+
+            print(bp1_best_guess, bp2_best_guess)
+
+            # use_depth = 1
+            # if use_depth:
+            #     allele_frequency = get_depth(chrom, bp1, bp2)
+            #     # sys.exit()
+
 
             if find_bps:
-                bp1, bp1_count = search_bps(bam_in, chrom, bp1, 'bp1')
-                bp2, bp2_count = search_bps(bam_in, chrom, bp2, 'bp2')
+                bp1, bp1_count = hone_bps(bam_in, chrom, bp1, bp1_best_guess)
+                bp2, bp2_count = hone_bps(bam_in, chrom, bp2, bp2_best_guess)
 
                 print("Bp1 adjusted to: %s [%s split reads found]") % (bp1, bp1_count)
                 print("Bp2 adjusted to: %s [%s split reads found]") % (bp2, bp2_count)
 
             make_dirs(bam_in, out_dir)
+            supporting_reads = []
+
+
+            bp1_support = FindReads(bam_in, chrom, bp1, bp2, slop, 'support', out_dir, supporting_reads, debug)
+            bp1_supporting_reads, bp1_support_count, bp1_opposing_reads, bp1_oppose_count = bp1_support.bp1_reads()
+
+            all_reads = bp1_supporting_reads
+            total_reads = set(all_reads)
+
+            print("Found %s reads in support of variant" % len(total_reads))
+            # bp2_support = FindReads(bam_in, chrom, bp1, bp2, slop, 'support', out_dir, supporting_reads, debug)
+
+
+
+
+
 
             #-------------------
             # DELETIONS
@@ -285,20 +342,21 @@ def main():
                 bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count, total_support = del_support.get_reads()
                 del_oppose  = Deletions(bam_in, chrom, bp1, bp2, slop, 'oppose', out_dir, total_support, debug)
                 bp1_opposing_reads, bp1_opposing_read_count, bp2_opposing_reads, bp2_opposing_read_count, total_oppose = del_oppose.get_reads()
-
-            if sv_type == 'INV':
-                supporting_reads = []
-                inv_support = Inversions(bam_in, chrom, bp1, bp2, slop, 'support', out_dir, supporting_reads, debug)
-                bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count, total_support = inv_support.get_reads()
-                inv_oppose  = Inversions(bam_in, chrom, bp1, bp2, slop, 'oppose', out_dir, total_support, debug)
-                bp1_opposing_reads, bp1_opposing_read_count, bp2_opposing_reads, bp2_opposing_read_count, total_oppose = inv_oppose.get_reads()
+            #
+            #
+            # if sv_type == 'INV':
+            #     supporting_reads = []
+            #     inv_support = Inversions(bam_in, chrom, bp1, bp2, slop, 'support', out_dir, supporting_reads, debug)
+            #     bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count, total_support = inv_support.get_reads()
+            #     inv_oppose  = Inversions(bam_in, chrom, bp1, bp2, slop, 'oppose', out_dir, total_support, debug)
+            #     bp1_opposing_reads, bp1_opposing_read_count, bp2_opposing_reads, bp2_opposing_read_count, total_oppose = inv_oppose.get_reads()
 
 
             #-------------------
             # Calculate af
             #-------------------
 
-                # allele_frequency = calculate_allele_freq(len(total_support), len(total_oppose), purity)
+            allele_frequency = calculate_allele_freq(len(total_support), len(total_oppose), purity)
 
         except IOError as err:
             sys.stderr.write("IOError " + str(err) + "\n");
