@@ -11,11 +11,9 @@ from inversions import Inversions
 from find_reads import FindReads
 
 
-
 def calculate_allele_freq(total_support, total_oppose, tumour_purity):
     print("Tumour purity set to %s" % tumour_purity)
     allele_frequency = float( total_support/(total_support+total_oppose) )
-
     if tumour_purity == 1:
         adj_allele_frequency = allele_frequency
     else:
@@ -119,8 +117,9 @@ def get_depth(chrom, bp1, bp2, ratio_file):
 
                 print(parts[0], parts[1], parts[2])
 
-        allel_freq = (1-average_ratio)
-        print("Allele frequency derived from read depth ratio = %s") % (allel_freq)
+        allele_freq = (1-average_ratio)
+        print("Allele frequency derived from read depth ratio = %s") % (allele_freq)
+        return(allele_freq)
 
 
 def hone_bps(bam_in, chrom, bp, bp_class):
@@ -222,8 +221,6 @@ def get_args():
                     help="Read depth ratio file " + \
                          "Must be fmtd: chromosome\tstart\tratio")
 
-    # ratio_file = '../data/HUM-1.tagged.filt.SC.RG.bam_ratio.txt'
-
     parser.set_defaults(slop=500, out_dir='../out', debug=False, test=False, purity=1, find_bps=False)
     options, args = parser.parse_args()
 
@@ -265,7 +262,6 @@ def main():
             purity   = float(options.purity)
             find_bps = options.find_bps
             test     = options.test
-            ratio_file = options.ratio_file
 
             chrom, bp1, bp2 = re.split(':|-', region)
             bp1 = int(bp1)
@@ -283,7 +279,7 @@ def main():
 
             if find_type:
                 bp1_reads, bp1_best_guess = guess_type(bam_in, chrom, bp1, 'bp1', out_dir, debug)
-                # bp1_best_guess = max(bp1_reads, key=bp1_reads.get)
+                bp1_best_guess = max(bp1_reads, key=bp1_reads.get)
                 bp2_reads, bp2_best_guess = guess_type(bam_in, chrom, bp2, 'bp2', out_dir, debug)
                 bp2_best_guess = max(bp2_reads, key=bp2_reads.get)
 
@@ -311,11 +307,11 @@ def main():
 
             print(bp1_best_guess, bp2_best_guess)
 
-            use_depth = 1
-            if use_depth:
-                allele_frequency = get_depth(chrom, bp1, bp2, ratio_file)
-                # sys.exit()
 
+            if ratio_file != 'NA':
+                allele_frequency = get_depth(chrom, bp1, bp2, ratio_file)
+                print("%s\t%s\t%s\t%s") % (chrom, bp1, bp2, allele_frequency)
+                sys.exit()
 
             if find_bps:
                 bp1, bp1_count = hone_bps(bam_in, chrom, bp1, bp1_best_guess)
@@ -328,29 +324,27 @@ def main():
             supporting_reads = []
 
 
-            bp1_support = FindReads(bam_in, chrom, bp1, bp2, slop, 'support', out_dir, supporting_reads, debug)
-            bp1_supporting_reads, bp1_support_count, bp1_opposing_reads, bp1_oppose_count = bp1_support.bp1_reads()
+            reads = FindReads(bam_in, chrom, bp1, bp2, slop, out_dir, debug, bp1_best_guess, bp2_best_guess)
+            bp1_supporting_reads, bp1_support_count, bp1_opposing_reads, bp1_oppose_count = reads.bp1_reads()
+            bp2_supporting_reads, bp2_support_count, bp2_opposing_reads, bp2_oppose_count = reads.bp2_reads()
 
-            all_reads = bp1_supporting_reads
-            total_reads = set(all_reads)
+            total_support = bp1_supporting_reads + bp2_supporting_reads
 
-            print("Found %s reads in support of variant" % len(total_reads))
-            # bp2_support = FindReads(bam_in, chrom, bp1, bp2, slop, 'support', out_dir, supporting_reads, debug)
+            all_su_reads = bp1_supporting_reads + bp2_supporting_reads
+            total_support = len(set(all_su_reads))
 
+            all_op_reads = bp2_supporting_reads + bp2_opposing_reads
+            total_oppose = len(set(all_op_reads))
 
+            print("Found %s reads in support of variant" % total_support)
+            print("Found %s reads opposing variant" % total_oppose)
 
-
-
-
-            #-------------------
-            # DELETIONS
-            #-------------------
-            if sv_type == 'DEL':
-                supporting_reads = []
-                del_support = Deletions(bam_in, chrom, bp1, bp2, slop, 'support', out_dir, supporting_reads, debug)
-                bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count, total_support = del_support.get_reads()
-                del_oppose  = Deletions(bam_in, chrom, bp1, bp2, slop, 'oppose', out_dir, total_support, debug)
-                bp1_opposing_reads, bp1_opposing_read_count, bp2_opposing_reads, bp2_opposing_read_count, total_oppose = del_oppose.get_reads()
+            # if sv_type == 'DEL':
+            #     supporting_reads = []
+            #     del_support = Deletions(bam_in, chrom, bp1, bp2, slop, 'support', out_dir, supporting_reads, debug)
+            #     bp1_sv_reads, bp1_read_count, bp2_sv_reads, bp2_read_count, total_support = del_support.get_reads()
+            #     del_oppose  = Deletions(bam_in, chrom, bp1, bp2, slop, 'oppose', out_dir, total_support, debug)
+            #     bp1_opposing_reads, bp1_opposing_read_count, bp2_opposing_reads, bp2_opposing_read_count, total_oppose = del_oppose.get_reads()
             #
             #
             # if sv_type == 'INV':
@@ -365,7 +359,9 @@ def main():
             # Calculate af
             #-------------------
 
-            allele_frequency = calculate_allele_freq(len(total_support), len(total_oppose), purity)
+            allele_frequency = calculate_allele_freq(total_support, total_oppose, purity)
+            # print("%s\t%s\t%s\t%s") % (chrom, bp1, bp2, allele_frequency)
+
 
         except IOError as err:
             sys.stderr.write("IOError " + str(err) + "\n");

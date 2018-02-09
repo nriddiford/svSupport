@@ -17,17 +17,162 @@ o query_name             =   Read name (formaerly 'qname')
 """
 
 class FindReads(object):
-    def __init__(self, bam_in, chrom, bp1, bp2, slop, read_type, out_dir, supporting_reads, debug=False):
+    def __init__(self, bam_in, chrom, bp1, bp2, slop, out_dir, debug, bp1_class, bp2_class):
 
         self.bam_in = bam_in
         self.chrom = chrom
         self.bp1 = bp1
         self.bp2 = bp2
         self.slop = slop
-        self.read_type = read_type
         self.out_dir = out_dir
         self.debug = debug
-        self.supporting_reads = supporting_reads
+        self.bp1_class = bp1_class
+        self.bp2_class = bp2_class
+
+
+    def bp1_reads(self):
+        samfile = pysam.Samfile(self.bam_in, "rb")
+        start = self.bp1 - self.slop
+        supporting_reads = []
+        opposing_reads = []
+
+        support_out = os.path.join(self.out_dir, "bp1_supporting_reads" + ".bam")
+        oppose_out = os.path.join(self.out_dir, "bp1_opposing_reads" + ".bam")
+
+        with pysam.AlignmentFile(support_out, "wb", template=samfile) as bp1_supporting_reads, pysam.AlignmentFile(oppose_out, "wb", template=samfile) as bp1_opposing_reads:
+            for read in samfile.fetch(self.chrom, start, self.bp1):
+                read_end_pos = read.reference_start + read.reference_length
+                try:
+                    mate = samfile.mate(read)
+                    mate_end_pos = mate.reference_start + mate.reference_length
+                except:
+                     continue
+
+                if read.is_duplicate:
+                    continue
+
+                # deletion
+                if self.bp1_class == 'F_bp1' and self.bp2_class == 'bp2_R':
+                    # supporting
+                    if not read.is_proper_pair and read.next_reference_start > self.bp2:
+                        self.print_and_write_bp1(read, bp1_supporting_reads, supporting_reads, 'disc_read', 'supporting', read_end_pos, mate_end_pos)
+                    elif read_end_pos == self.bp1:
+                        self.print_and_write_bp1(read, bp1_supporting_reads, supporting_reads, 'clipped_read', 'supporting', read_end_pos, mate_end_pos)
+
+                    # opposing
+                    elif read.qname not in supporting_reads:
+                        if (read_end_pos < self.bp1 and read.next_reference_start > self.bp1 and read.next_reference_start < self.bp2) or (read.reference_start > self.bp1 and mate_end_pos < self.bp1):
+                            self.print_and_write_bp1(read, bp1_opposing_reads, opposing_reads, 'mate_pair', 'opposing', read_end_pos, mate_end_pos)
+                        elif read.reference_start < self.bp1 and read_end_pos > self.bp1:
+                            self.print_and_write_bp1(read, bp1_opposing_reads, opposing_reads, 'spanning', 'opposing', read_end_pos, mate_end_pos)
+
+                # type I inversion - ('F_bp1', 'F_bp2')
+                elif self.bp1_class == 'F_bp1' and self.bp2_class == 'F_bp2':
+                    # supporting
+                    if not read.is_proper_pair and mate_end_pos <= self.bp2:
+                        self.print_and_write_bp1(read, bp1_supporting_reads, supporting_reads, 'disc_read', 'supporting', read_end_pos, mate_end_pos)
+
+                    elif read_end_pos == self.bp1:
+                        self.print_and_write_bp1(read, bp1_supporting_reads, supporting_reads, 'clipped_read', 'supporting', read_end_pos, mate_end_pos)
+
+                    # opposing
+                    elif read.qname not in supporting_reads:
+                        if (read_end_pos < self.bp1 and read.next_reference_start > self.bp1 and read.next_reference_start < self.bp2) or (read.reference_start > self.bp1 and mate_end_pos < self.bp1):
+                            self.print_and_write_bp1(read, bp1_opposing_reads, opposing_reads, 'mate_pair', 'opposing', read_end_pos, mate_end_pos)
+                        elif read.reference_start < self.bp1 and read_end_pos > self.bp1:
+                            self.print_and_write_bp1(read, bp1_opposing_reads, opposing_reads, 'spanning', 'opposing', read_end_pos, mate_end_pos)
+
+        support_count = len(set(supporting_reads))
+        oppose_count = len(set(opposing_reads))
+
+        pysam.index(support_out)
+        pysam.index(oppose_out)
+
+        return(supporting_reads, support_count, opposing_reads, oppose_count)
+
+
+    def print_and_write_bp1(self, read, read_bam, read_list, evidence, for_against, read_end_pos, mate_end_pos):
+        if self.debug:
+            print("* bp1 %s %s read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (evidence, for_against, read.query_name, read.seq, read.reference_start, read_end_pos, read.next_reference_start, mate_end_pos)
+        read_bam.write(read)
+        read_list.append(read.query_name)
+
+
+
+
+    def bp2_reads(self):
+        samfile = pysam.Samfile(self.bam_in, "rb")
+        end = self.bp2 + self.slop
+        supporting_reads = []
+        opposing_reads = []
+
+        support_out = os.path.join(self.out_dir, "bp2_supporting_reads" + ".bam")
+        oppose_out = os.path.join(self.out_dir, "bp2_opposing_reads" + ".bam")
+
+        with pysam.AlignmentFile(support_out, "wb", template=samfile) as bp2_supporting_reads, pysam.AlignmentFile(oppose_out, "wb", template=samfile) as bp2_opposing_reads:
+            for read in samfile.fetch(self.chrom, self.bp2, end):
+                read_end_pos = read.reference_start + read.reference_length
+                try:
+                    mate = samfile.mate(read)
+                    mate_end_pos = mate.reference_start + mate.reference_length
+                except:
+                     continue
+
+                if read.is_duplicate:
+                    continue
+
+                # deletion
+                if self.bp1_class == 'F_bp1' and self.bp2_class == 'bp2_R':
+                    # supporting
+
+                    if not read.is_proper_pair and read.is_reverse and mate_end_pos < self.bp1:
+                        self.print_and_write_bp2(read, bp2_supporting_reads, supporting_reads, 'disc_read', 'supporting', read_end_pos, mate_end_pos)
+                    elif read.reference_start +1 == self.bp2:
+                        self.print_and_write_bp2(read, bp2_supporting_reads, supporting_reads, 'clipped_read', 'supporting', read_end_pos, mate_end_pos)
+
+                    # opposing
+                    elif read.qname not in supporting_reads:
+                        if (read_end_pos < self.bp2 and read.next_reference_start > self.bp2) or (read.reference_start > self.bp2 and mate_end_pos < self.bp2 and mate_end_pos > self.bp1):
+                        # if (read_end_pos < self.bp1 and read.next_reference_start > self.bp1 and read.next_reference_start < self.bp2) or (read.reference_start > self.bp1 and mate_end_pos < self.bp1):
+                            self.print_and_write_bp2(read, bp2_opposing_reads, opposing_reads, 'mate_pair', 'opposing', read_end_pos, mate_end_pos)
+                        # elif read.reference_start < self.bp1 and read_end_pos > self.bp1:
+                        elif read.reference_start < self.bp2 and read_end_pos > self.bp2:
+                            self.print_and_write_bp2(read, bp2_opposing_reads, opposing_reads, 'spanning', 'opposing', read_end_pos, mate_end_pos)
+
+                # type I inversion - ('F_bp1', 'F_bp2')
+                elif self.bp1_class == 'F_bp1' and self.bp2_class == 'F_bp2':
+                    # supporting
+                    if not read.is_proper_pair and mate_end_pos <= self.bp2:
+                        self.print_and_write_bp2(read, bp2_supporting_reads, supporting_reads, 'disc_read', 'supporting', read_end_pos, mate_end_pos)
+
+                    elif read_end_pos == self.bp1:
+                        self.print_and_write_bp2(read, bp2_supporting_reads, supporting_reads, 'clipped_read', 'supporting', read_end_pos, mate_end_pos)
+
+                    # opposing
+                    elif read.qname not in supporting_reads:
+                        if (read_end_pos < self.bp1 and read.next_reference_start > self.bp1 and read.next_reference_start < self.bp2) or (read.reference_start > self.bp1 and mate_end_pos < self.bp1):
+                            self.print_and_write_bp2(read, bp1_opposing_reads, opposing_reads, 'mate_pair', 'opposing', read_end_pos, mate_end_pos)
+                        elif read.reference_start < self.bp1 and read_end_pos > self.bp1:
+                            self.print_and_write_bp2(read, bp1_opposing_reads, opposing_reads, 'spanning', 'opposing', read_end_pos, mate_end_pos)
+
+        support_count = len(set(supporting_reads))
+        oppose_count = len(set(opposing_reads))
+
+        pysam.index(support_out)
+        pysam.index(oppose_out)
+
+        return(supporting_reads, support_count, opposing_reads, oppose_count)
+
+
+    def print_and_write_bp2(self, read, read_bam, read_list, evidence, for_against, read_end_pos, mate_end_pos):
+        if self.debug:
+            print("* bp2 %s %s read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (evidence, for_against, read.query_name, read.seq, read.reference_start, read_end_pos, read.next_reference_start, mate_end_pos)
+        read_bam.write(read)
+        read_list.append(read.query_name)
+
+
+
+
 
     def get_reads(self):
 
