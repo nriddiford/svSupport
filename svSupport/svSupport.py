@@ -21,11 +21,11 @@ def parse_config(options):
 
             if parts[0] == 'sample':
                 continue
-
-            options.in_file = parts[0]
-            options.region  = parts[1]
-            options.purity = float(parts[2])
-            options.ratio_file = parts[3]
+            sample = parts[0]
+            options.in_file = parts[1]
+            options.region  = parts[2]
+            options.purity = float(parts[3])
+            options.ratio_file = parts[4]
             options.find_bps = 1
         # dataset=pd.read_csv(options.config,delimiter="\t")
         # df=dataset[['sample', 'locus', 'purity', 'read_depth']]
