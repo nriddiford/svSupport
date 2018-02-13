@@ -15,17 +15,28 @@ from merge_bams import merge_bams
 
 def parse_config(options):
     out_file = options.variants_out
-    with open(out_file, 'w+') as af_out:
-        dataset=pd.read_csv(options.config,delimiter="\t")
-        df=dataset[['sample', 'locus', 'purity', 'read_depth']]
-        df = df.where((pd.notnull(df)), None)
+    with open (options.config, 'r') as config_file, open(out_file, 'w+') as af_out:
+        for l in config_file:
+            parts = l.rstrip().split('\t')
 
-        for index, variant in df.iterrows():
-            options.in_file = variant['sample']
-            options.region  = variant['locus']
-            options.purity = float(variant['purity'])
-            options.ratio_file = variant['read_depth']
-            options.find_bps = True
+            if parts[0] == 'sample':
+                continue
+
+            options.in_file = parts[0]
+            options.region  = parts[1]
+            options.purity = float(parts[2])
+            options.ratio_file = parts[3]
+            options.find_bps = 1
+        # dataset=pd.read_csv(options.config,delimiter="\t")
+        # df=dataset[['sample', 'locus', 'purity', 'read_depth']]
+        # df = df.where((pd.notnull(df)), None)
+        #
+        # for index, variant in df.iterrows():
+        #     options.in_file = variant['sample']
+        #     options.region  = variant['locus']
+        #     options.purity = float(variant['purity'])
+        #     options.ratio_file = variant['read_depth']
+        #     options.find_bps = True
 
             chrom, bp1, bp2, allele_frequency = worker(options)
             out_line = [chrom, bp1, bp2, allele_frequency]
