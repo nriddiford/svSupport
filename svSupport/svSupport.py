@@ -328,7 +328,7 @@ def worker(options):
 
     print(bp1_best_guess, bp2_best_guess)
 
-    if ratio_file is not None:
+    if ratio_file is not None and ratio_file != 'NA':
         print("* Calculating allele frequency from read depth file: %s" % ratio_file)
         allele_frequency = get_depth(chrom, bp1, bp2, ratio_file)
         return(chrom, bp1, bp2, allele_frequency)
