@@ -4,7 +4,7 @@ from setuptools import setup
 
 __VERSION__ = '0.4'
 
-requirements = ['python>=2.7.12', 'pysam==0.13', 'pytest', 'pandas=='0.22.0']
+requirements = ['python>=2.7.12', 'pysam==0.13', 'pytest', 'pandas==0.22.0']
 
 setup(name='svSupport',
       version=__VERSION__,
