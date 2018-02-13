@@ -7,8 +7,8 @@ import pandas as pd
 sys.dont_write_bytecode = True
 from collections import defaultdict
 from optparse import OptionParser
-from deletions import Deletions
-from inversions import Inversions
+# from deletions import Deletions
+# from inversions import Inversions
 from find_reads import FindReads
 from merge_bams import merge_bams
 
