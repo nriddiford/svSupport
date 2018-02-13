@@ -27,8 +27,8 @@ def parse_config(options):
             options.ratio_file = variant['read_depth']
             options.find_bps = True
 
-            bp1, bp2, allele_frequency = worker(options)
-            out_line = [bp1, bp2, allele_frequency]
+            chrom, bp1, bp2, allele_frequency = worker(options)
+            out_line = [chrom, bp1, bp2, allele_frequency]
             af_out.write('\t'.join(map(str, out_line)) + '\n')
 
 
@@ -310,6 +310,7 @@ def worker(options):
             print("* Can't classify SV - will continue assuming a deletion as default")
         else:
             print("-> Don't know")
+            bp1_best_guess, bp2_best_guess = 'F_bp1', 'bp2_R'
 
     else:
         bp1_best_guess, bp2_best_guess = 'F_bp1', 'bp2_R'
@@ -320,7 +321,7 @@ def worker(options):
     if ratio_file is not None:
         print("* Calculating allele frequency from read depth file: %s" % ratio_file)
         allele_frequency = get_depth(chrom, bp1, bp2, ratio_file)
-        return(bp1, bp2, allele_frequency)
+        return(chrom, bp1, bp2, allele_frequency)
     else:
         if find_bps:
             bp1, bp1_count = hone_bps(bam_in, chrom, bp1, bp1_best_guess)
@@ -351,7 +352,7 @@ def worker(options):
         print("* Found %s reads opposing variant" % total_oppose)
 
         allele_frequency = calculate_allele_freq(total_support, total_oppose, purity)
-        return(bp1, bp2, allele_frequency)
+        return(chrom, bp1, bp2, allele_frequency)
 
 
 def main():
@@ -382,9 +383,8 @@ def main():
 
     if options.in_file is not None and options.region is not None:
         try:
-            bp1, bp2, allele_frequency = worker(options)
-            return(bp1, bp2, allele_frequency)
-
+            chrom, bp1, bp2, allele_frequency = worker(options)
+            return(chrom, bp1, bp2, allele_frequency)
         except IOError as err:
             sys.stderr.write("IOError " + str(err) + "\n");
             return
