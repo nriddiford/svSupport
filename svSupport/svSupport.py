@@ -283,7 +283,7 @@ def worker(options):
     if debug:
         print_options(bam_in, ratio_file, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir)
 
-    find_type = 1;
+
 
     if options.config:
         if ratio_file is not None:
@@ -291,7 +291,7 @@ def worker(options):
         else:
             print("python svSupport.py -i %s -l %s:%s-%s -s %s -p %s -f %s -t %s -d %d -o %s -v %s") % (bam_in, chrom, bp1, bp2, slop, purity, find_bps, test, debug, out_dir, variants_out)
 
-
+    find_type = 0;
     if find_type:
         bp1_reads, bp1_best_guess = guess_type(bam_in, chrom, bp1, 'bp1', out_dir, debug)
         bp1_best_guess = max(bp1_reads, key=bp1_reads.get)
@@ -316,7 +316,6 @@ def worker(options):
         bp1_best_guess, bp2_best_guess = 'F_bp1', 'bp2_R'
 
     print(bp1_best_guess, bp2_best_guess)
-
 
     if ratio_file is not None:
         print("* Calculating allele frequency from read depth file: %s" % ratio_file)
