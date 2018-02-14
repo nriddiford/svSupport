@@ -26,10 +26,10 @@ def parse_config(options):
     out_file = options.variants_out
     with open(out_file, 'w+') as af_out:
         dataset=pd.read_csv(options.config,delimiter="\t")
-        df=dataset[['sample', 'bam', 'locus', 'purity', 'read_depth']]
-        df = df.where((pd.notnull(df)), None)
+        # df=dataset[['sample', 'bam', 'locus', 'purity', 'read_depth']]
+        dataset = df.where((pd.notnull(df)), None)
 
-        for index, variant in df.iterrows():
+        for index, variant in dataset.iterrows():
             options.in_file = variant['bam']
             options.region  = variant['locus']
             options.purity = float(variant['purity'])
@@ -37,7 +37,7 @@ def parse_config(options):
             options.find_bps = True
 
             chrom, bp1, bp2, allele_frequency = worker(options)
-            out_line = [chrom, bp1, bp2, allele_frequency]
+            out_line = [chrom, bp1, bp2, allele_frequency, variant]
             af_out.write('\t'.join(map(str, out_line)) + '\n')
 
 
