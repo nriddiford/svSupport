@@ -1,17 +1,14 @@
 #!/usr/bin/env python
 from __future__ import division
-import os, re
-import pysam
-import sys
-import pandas as pd
+import os, re, sys
 sys.dont_write_bytecode = True
+import pysam
+import pandas as pd
 from collections import defaultdict
 from optparse import OptionParser
-# from deletions import Deletions
-# from inversions import Inversions
 from find_reads import FindReads
 from merge_bams import merge_bams
-from profilehooks import profile
+# from profilehooks import profile
 
 def parse_config(options):
     print
@@ -24,21 +21,26 @@ def parse_config(options):
     print
 
     out_file = options.variants_out
-    with open(out_file, 'w+') as af_out:
-        dataset=pd.read_csv(options.config,delimiter="\t")
-        # df=dataset[['sample', 'bam', 'locus', 'purity', 'read_depth']]
-        dataset = df.where((pd.notnull(df)), None)
+    af_out = open(out_file, 'w+')
+    dataset=pd.read_csv(options.config,delimiter="\t")
+    # df=dataset[['sample', 'bam', 'locus', 'purity', 'read_depth']]
+    dataset = dataset.where((pd.notnull(dataset)), None)
 
-        for index, variant in dataset.iterrows():
-            options.in_file = variant['bam']
-            options.region  = variant['locus']
-            options.purity = float(variant['purity'])
-            options.ratio_file = variant['read_depth']
-            options.find_bps = True
+    seen_events = {}
+    for index, variant in dataset.iterrows():
 
-            chrom, bp1, bp2, allele_frequency = worker(options)
-            out_line = [chrom, bp1, bp2, allele_frequency, variant]
-            af_out.write('\t'.join(map(str, out_line)) + '\n')
+        if
+        options.in_file = variant['bam']
+        options.region  = variant['locus']
+        options.purity = float(variant['purity'])
+        options.ratio_file = variant['read_depth']
+        options.find_bps = True
+
+        chrom, bp1, bp2, allele_frequency = worker(options)
+        out_line = [chrom, bp1, bp2, allele_frequency, variant['length(Kb)'], variant['bp1_locus'], variant['bp2_locus'], variant['affected_genes']  ]
+        af_out.write('\t'.join(map(str, out_line)) + '\n')
+
+    af_out.close()
 
 
 def calculate_allele_freq(total_support, total_oppose, tumour_purity):
