@@ -11,32 +11,30 @@ from optparse import OptionParser
 # from inversions import Inversions
 from find_reads import FindReads
 from merge_bams import merge_bams
-
+from profilehooks import profile
 
 def parse_config(options):
+    print
+    print("Extracting arguments from config file: %s " % options.config)
+    try:
+        os.remove(options.variants_out)
+        print("Cleaning up old variants file '%s'" % options.variants_out)
+    except OSError:
+        pass
+    print
+
     out_file = options.variants_out
     with open (options.config, 'r') as config_file, open(out_file, 'w+') as af_out:
-        for l in config_file:
-            parts = l.rstrip().split('\t')
+        dataset=pd.read_csv(config_file,delimiter="\t")
+        df=dataset[['sample', 'bam', 'locus', 'purity', 'read_depth']]
+        df = df.where((pd.notnull(df)), None)
 
-            if parts[0] == 'sample':
-                continue
-            sample = parts[0]
-            options.in_file = parts[1]
-            options.region  = parts[2]
-            options.purity = float(parts[3])
-            options.ratio_file = parts[4]
-            options.find_bps = 1
-        # dataset=pd.read_csv(options.config,delimiter="\t")
-        # df=dataset[['sample', 'locus', 'purity', 'read_depth']]
-        # df = df.where((pd.notnull(df)), None)
-        #
-        # for index, variant in df.iterrows():
-        #     options.in_file = variant['sample']
-        #     options.region  = variant['locus']
-        #     options.purity = float(variant['purity'])
-        #     options.ratio_file = variant['read_depth']
-        #     options.find_bps = True
+        for index, variant in df.iterrows():
+            options.in_file = variant['bam']
+            options.region  = variant['locus']
+            options.purity = float(variant['purity'])
+            options.ratio_file = variant['read_depth']
+            options.find_bps = True
 
             chrom, bp1, bp2, allele_frequency = worker(options)
             out_line = [chrom, bp1, bp2, allele_frequency]
@@ -264,7 +262,7 @@ def get_args():
                     action="store",
                     help="File to write parsed values to " )
 
-    parser.set_defaults(slop=500, out_dir='../out', debug=False, test=False, purity=1, find_bps=False, variants_out='variants_out.txt')
+    parser.set_defaults(slop=500, out_dir='../out', purity=1, variants_out='variants_out.txt')
     options, args = parser.parse_args()
 
     if (options.in_file is None or options.region is None) and options.test is False and options.config is None:
@@ -295,12 +293,11 @@ def worker(options):
         print_options(bam_in, ratio_file, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir)
 
 
-
     if options.config:
         if ratio_file is not None:
-            print("python svSupport.py -i %s -r %s -l %s:%s-%s -s %s -p %s -f %s -t %s -d %d -o %s -v %s") % (bam_in, ratio_file, chrom, bp1, bp2, slop, purity, find_bps, test, debug, out_dir, variants_out)
+            print("python svSupport.py -i %s -r %s -l %s:%s-%s -s %s -p %s -f %s -o %s -v %s") % (bam_in, ratio_file, chrom, bp1, bp2, slop, purity, find_bps, out_dir, variants_out)
         else:
-            print("python svSupport.py -i %s -l %s:%s-%s -s %s -p %s -f %s -t %s -d %d -o %s -v %s") % (bam_in, chrom, bp1, bp2, slop, purity, find_bps, test, debug, out_dir, variants_out)
+            print("python svSupport.py -i %s -l %s:%s-%s -s %s -p %s -f %s -o %s -v %s") % (bam_in, chrom, bp1, bp2, slop, purity, find_bps, out_dir, variants_out)
 
     find_type = 0;
     if find_type:
@@ -365,21 +362,13 @@ def worker(options):
         return(chrom, bp1, bp2, allele_frequency)
 
 
+# @profile
 def main():
     options, args = get_args()
 
     if options.config is not None:
-        print
-        print("Extracting arguments from config file: %s " % options.config)
-
-        try:
-            os.remove(options.variants_out)
-            print("Cleaning up old variants file '%s'" % options.variants_out)
-        except OSError:
-            pass
-
-        print
         parse_config(options)
+        sys.exit()
 
     elif options.test is True:
         print
@@ -401,7 +390,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-    # parser, options, args = get_args()
-    # args = parser.parse_args()
-    # print(args)
-    # main(args)

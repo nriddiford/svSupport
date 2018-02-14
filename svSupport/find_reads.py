@@ -123,8 +123,8 @@ class FindReads(object):
         support_count = len(set(supporting_reads))
         oppose_count = len(set(opposing_reads))
 
-        pysam.index(support_out)
-        pysam.index(oppose_out)
+        # pysam.index(support_out)
+        # pysam.index(oppose_out)
 
         return(supporting_reads, support_count, support_out, opposing_reads, oppose_count, oppose_out)
 
@@ -210,8 +210,8 @@ class FindReads(object):
         support_count = len(set(supporting_reads))
         oppose_count = len(set(opposing_reads))
 
-        pysam.index(support_out)
-        pysam.index(oppose_out)
+        # pysam.index(support_out)
+        # pysam.index(oppose_out)
 
         return(supporting_reads, support_count, support_out, opposing_reads, oppose_count, oppose_out)
 

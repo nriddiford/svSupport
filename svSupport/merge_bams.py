@@ -1,8 +1,11 @@
-
 import pysam
 import os
 
 def merge_bams(out_file, bams):
+
+    for bam_file in bams:
+        pysam.index(bam_file)
+        
     in_files = ', '.join(bams)
     print("Merging bam files %s into '%s'") % (in_files, out_file)
     merge_parameters = ['-f', out_file] + bams
