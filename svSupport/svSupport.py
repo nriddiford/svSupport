@@ -131,7 +131,7 @@ def guess_type(bamFile, chrom, bp, bp_number, out_dir, debug):
 def get_depth(chrom, bp1, bp2, ratio_file):
 
     count = 1
-    average_ratio = 0
+    cum_ratio = 0
 
     with open(ratio_file, 'r') as depth_ratios:
         for l in depth_ratios:
@@ -143,9 +143,12 @@ def get_depth(chrom, bp1, bp2, ratio_file):
             ratio = float(parts[2])
 
             if parts[0] == chrom and pos >= bp1 and pos <= bp2:
-                average_ratio = ratio/count
+                if ratio < 0:
+                    continue
+                cum_ratio += ratio
                 count += 1
 
+        average_ratio = cum_ratio/count
         allele_frequency = (1-average_ratio)
         allele_frequency = "{:.2f}".format(allele_frequency)
 
@@ -390,7 +393,7 @@ def main():
         options.in_file = '../data/test.bam'
         options.debug = True
 
-    if options.in_file is not None and options.region is not None:
+    if (options.in_file is not None and options.region is not None) or options.ratio_file is not None:
         try:
             chrom, bp1, bp2, allele_frequency = worker(options)
             return(chrom, bp1, bp2, allele_frequency)
