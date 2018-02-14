@@ -26,10 +26,11 @@ def parse_config(options):
     # df=dataset[['sample', 'bam', 'locus', 'purity', 'read_depth']]
     dataset = dataset.where((pd.notnull(dataset)), None)
 
-    seen_events = {}
-    for index, variant in dataset.iterrows():
+    # seen_events = defaultdict(int)
 
-        if
+    for index, variant in dataset.iterrows():
+        # if variant['event']:
+        #     seen_events[variant['sample']][variant['event']] += 1
         options.in_file = variant['bam']
         options.region  = variant['locus']
         options.purity = float(variant['purity'])
@@ -37,7 +38,7 @@ def parse_config(options):
         options.find_bps = True
 
         chrom, bp1, bp2, allele_frequency = worker(options)
-        out_line = [chrom, bp1, bp2, allele_frequency, variant['length(Kb)'], variant['bp1_locus'], variant['bp2_locus'], variant['affected_genes']  ]
+        out_line = [variant['sample'], chrom, bp1, bp2, allele_frequency, variant['length(Kb)'], variant['bp1_locus'], variant['bp2_locus'], variant['affected_genes']  ]
         af_out.write('\t'.join(map(str, out_line)) + '\n')
 
     af_out.close()
@@ -154,9 +155,8 @@ def get_depth(chrom, bp1, bp2, ratio_file):
 
 def hone_bps(bam_in, chrom, bp, bp_class):
     samfile = pysam.Samfile(bam_in, "rb")
-    start = bp - 3
-    stop = bp + 3
-
+    start = bp - 5
+    stop = bp + 5
     original_breakpoint = int(bp)
 
     bp_reads = {}
