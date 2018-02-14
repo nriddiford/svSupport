@@ -24,8 +24,8 @@ def parse_config(options):
     print
 
     out_file = options.variants_out
-    with open (options.config, 'r') as config_file, open(out_file, 'w+') as af_out:
-        dataset=pd.read_csv(config_file,delimiter="\t")
+    with open(out_file, 'w+') as af_out:
+        dataset=pd.read_csv(options.config,delimiter="\t")
         df=dataset[['sample', 'bam', 'locus', 'purity', 'read_depth']]
         df = df.where((pd.notnull(df)), None)
 
