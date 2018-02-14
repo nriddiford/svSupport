@@ -152,8 +152,10 @@ def get_depth(chrom, bp1, bp2, ratio_file):
 
 def hone_bps(bam_in, chrom, bp, bp_class):
     samfile = pysam.Samfile(bam_in, "rb")
-    start = bp - 5
-    stop = bp + 5
+    start = bp - 3
+    stop = bp + 3
+
+    original_breakpoint = int(bp)
 
     bp_reads = {}
     for i in range(start, stop):
@@ -173,8 +175,14 @@ def hone_bps(bam_in, chrom, bp, bp_class):
                     count+=1
                     bp_reads[i] = count
 
-    maxValKey = max(bp_reads, key=bp_reads.get)
-    read_count = bp_reads[maxValKey]
+
+    try:
+        maxValKey = max(bp_reads, key=bp_reads.get)
+        read_count = bp_reads[maxValKey]
+    except ValueError:
+        print("Can't find split read support - using priovided breakpoints")
+        maxValKey = original_breakpoint
+        read_count = 0
 
     return(maxValKey, read_count)
 
