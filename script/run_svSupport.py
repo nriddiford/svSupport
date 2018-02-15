@@ -7,7 +7,7 @@ import re
 svs_file='/data/kdi_prod/project_result/948/01.00/Analysis/Analysis/svSupport/data/all_samples_2.txt'
 
 out_file = open('config.txt', 'w')
-headers = ['sample', 'bam', 'locus', 'purity', 'read_depth', 'length(Kb)', 'bp1_locus', 'bp2_locus', 'affected_genes']
+headers = ['sample', 'event', 'type', 'bam', 'locus', 'purity', 'read_depth', 'length(Kb)', 'bp1_locus', 'bp2_locus', 'affected_genes']
 
 out_file.write('\t'.join(headers) + '\n')
 bams = '/data/kdi_prod/project_result/948/01.00/Analysis/Bwa'
@@ -78,9 +78,9 @@ with open(svs_file, 'r') as variants:
                 ratio_file = os.path.join(depth_data, name)
         
         if "cnv" in variant['source'].lower():
-            out_line = [variant['sample'], bam_in, variant['position'], variant['purity'], ratio_file, variant['length(Kb)'], variant['bp1_locus'], variant['bp2_locus'], variant['affected_genes']]
+            out_line = [variant['sample'], variant['event'], variant['type'],  bam_in, variant['position'], variant['purity'], ratio_file, variant['length(Kb)'], variant['bp1_locus'], variant['bp2_locus'], variant['affected_genes']]
         else:
-            out_line = [variant['sample'], bam_in, variant['position'], variant['purity'], 'NA', variant['length(Kb)'], variant['bp1_locus'], variant['bp2_locus'], variant['affected_genes']]
+            out_line = [variant['sample'], variant['event'], variant['type'], bam_in, variant['position'], variant['purity'], 'NA', variant['length(Kb)'], variant['bp1_locus'], variant['bp2_locus'], variant['affected_genes']]
 
         out_file.write('\t'.join(map(str, out_line)) + '\n')
         
