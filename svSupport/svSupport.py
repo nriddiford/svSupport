@@ -8,7 +8,6 @@ from collections import defaultdict
 from optparse import OptionParser
 from find_reads import FindReads
 from merge_bams import merge_bams
-# from profilehooks import profile
 
 def parse_config(options):
     print
@@ -41,6 +40,8 @@ def parse_config(options):
         options.purity = float(variant['purity'])
         options.ratio_file = variant['read_depth']
         options.find_bps = True
+        if variant['guess'] is not None:
+            options.guess = True
 
         chrom, bp1, bp2, allele_frequency = worker(options)
         out_line = [variant['sample'], chrom, bp1, bp2, allele_frequency, variant['type'], variant['length(Kb)'], variant['bp1_locus'], variant['bp2_locus'], variant['affected_genes']  ]
@@ -245,7 +246,6 @@ def get_args():
                     help="Directory to write output to " + \
                          "[Default: '../out']")
 
-
     parser.add_option("-d", \
                     "--debug", \
                     dest="debug",
@@ -279,6 +279,12 @@ def get_args():
                     dest="variants_out",
                     action="store",
                     help="File to write parsed values to " )
+
+    parser.add_option("-g", \
+                    "--guess_type", \
+                    dest="guess_type",
+                    action="store",
+                    help="Guess type of SV for read searching" )
 
     parser.set_defaults(slop=500, out_dir='../out', purity=1, variants_out='variants_out.txt')
     options, args = parser.parse_args()
@@ -317,8 +323,7 @@ def worker(options):
         else:
             print("python svSupport.py -i %s -l %s:%s-%s -s %s -p %s -f %s -o %s -v %s") % (bam_in, chrom, bp1, bp2, slop, purity, find_bps, out_dir, variants_out)
 
-    find_type = 0;
-    if find_type:
+    if guess_type:
         bp1_reads, bp1_best_guess = guess_type(bam_in, chrom, bp1, 'bp1', out_dir, debug)
         bp1_best_guess = max(bp1_reads, key=bp1_reads.get)
         bp2_reads, bp2_best_guess = guess_type(bam_in, chrom, bp2, 'bp2', out_dir, debug)
