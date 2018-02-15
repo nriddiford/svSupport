@@ -22,15 +22,20 @@ def parse_config(options):
 
     out_file = options.variants_out
     af_out = open(out_file, 'w+')
-    dataset=pd.read_csv(options.config,delimiter="\t")
-    # df=dataset[['sample', 'bam', 'locus', 'purity', 'read_depth']]
-    dataset = dataset.where((pd.notnull(dataset)), None)
+    df=pd.read_csv(options.config,delimiter="\t")
+    df = df.where((pd.notnull(df)), None)
 
-    # seen_events = defaultdict(int)
+    seen_events = defaultdict(int)
 
-    for index, variant in dataset.iterrows():
-        # if variant['event']:
-        #     seen_events[variant['sample']][variant['event']] += 1
+    for index, variant in df.iterrows():
+        if variant['event']:
+            key = '_'.join([variant['sample'], str(variant['event'])])
+            seen_events[key] += 1
+
+            if seen_events[key] > 1:
+                print("Seen this event before: %s, %s") % (variant['sample'], str(variant['event']))
+                continue
+
         options.in_file = variant['bam']
         options.region  = variant['locus']
         options.purity = float(variant['purity'])
@@ -38,7 +43,7 @@ def parse_config(options):
         options.find_bps = True
 
         chrom, bp1, bp2, allele_frequency = worker(options)
-        out_line = [variant['sample'], chrom, bp1, bp2, allele_frequency, variant['length(Kb)'], variant['bp1_locus'], variant['bp2_locus'], variant['affected_genes']  ]
+        out_line = [variant['sample'], chrom, bp1, bp2, allele_frequency, variant['type'], variant['length(Kb)'], variant['bp1_locus'], variant['bp2_locus'], variant['affected_genes']  ]
         af_out.write('\t'.join(map(str, out_line)) + '\n')
 
     af_out.close()
