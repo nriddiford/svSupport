@@ -16,6 +16,10 @@ bp1_best_guess, bp2_best_guess = 'F_bp1', 'bp2_R'
 
 reads = FindReads(bam_in, chrom, bp1, bp2, slop, out_dir, debug, bp1_best_guess, bp2_best_guess)
 
+# @pytest.mark.parametrize("bam_in,chrom,bp1,bp2", [
+#     ('../data/A373R11.tagged.filt.SC.RG.bam', '2L', 2250461, 2251184),
+#     ('../data/A373R11.tagged.filt.SC.RG.bam', '2L', 2131064, 2131463),
+# ])
 class Breakpoint_reads(unittest.TestCase):
     """Test reads returned in support of breakpoints"""
     bp1_supporting_reads, bp1_support_count, bp1_support_bam, bp1_opposing_reads, bp1_oppose_count, bp1_oppose_bam = reads.bp1_reads()
@@ -25,18 +29,15 @@ class Breakpoint_reads(unittest.TestCase):
         """Are the correct number of bp1 supporting reads reported?"""
         self.assertTrue(self.bp1_support_count == 4)
 
-
     def test_bp1_read_names(self):
         """Are the correct bp1 supporting reads reported?"""
         bp1_true_support = ['HWI-D00405:129:C6KNAANXX:4:1309:3990:94686', 'HWI-D00405:129:C6KNAANXX:4:1209:9222:18319',
                             'HWI-D00405:129:C6KNAANXX:4:2304:19694:29523', 'HWI-D00405:129:C6KNAANXX:4:1314:2618:18304']
         self.assertTrue(sorted(self.bp1_supporting_reads) == sorted(bp1_true_support))
 
-
     def test_bp2_read_count(self):
         """Are the correct number of bp2 supporting reads reported?"""
         self.assertTrue(self.bp2_support_count == 5)
-
 
     def test_bp2_read_names(self):
         """Are the correct bp2 supporting reads reported?"""

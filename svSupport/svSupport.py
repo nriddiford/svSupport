@@ -83,34 +83,52 @@ def print_options(bam_in, ratio_file, chrom, bp1, bp2, slop, find_bps, debug, te
 
 
 def F_bp(read, bp):
-    if not read.is_proper_pair and (not read.is_reverse and read.reference_start < bp):
+    if not read.is_proper_pair and (not read.is_reverse and read.reference_start + read.reference_length <= bp):
         return True
 
 def bp_R(read, bp):
-    if not read.is_proper_pair and (read.is_reverse and read.reference_start + read.reference_length > bp):
+    if not read.is_proper_pair and (read.is_reverse and read.reference_start >= bp):
         return True
 
 def bp_F(read, bp):
-    if not read.is_proper_pair and (not read.is_reverse and read.reference_start + read.reference_length > bp):
+    if not read.is_proper_pair and (not read.is_reverse and read.reference_start >= bp):
         return True
 
 def guess_type(bamFile, chrom, bp, bp_number, out_dir, debug):
     samfile = pysam.Samfile(bamFile, "rb")
-    start = bp - 300
-    stop = bp + 300
+    start = bp - 500
+    stop = bp + 500
 
     sv_reads = defaultdict(int)
 
+    print(bp, bp_number)
     count = 0
     out_file = os.path.join(out_dir, bp_number + "_classifying_reads" + ".bam")
 
     with pysam.AlignmentFile(out_file, "wb", template=samfile) as bpReads:
 
         for read in samfile.fetch(chrom, start, stop):
-            read_end_pos = read.reference_start + read.reference_length
-            mate_end_pos = read.next_reference_start + read.reference_length
 
-            if bp_number == 'bp1':
+            if read.reference_start +1 == bp and re.findall(r'(\d+)[S|H]', read.cigarstring):
+                if re.findall(r'.*?M(\d+)[S|H]', read.cigarstring):
+                    # print("Read clipped to right: %s") % (read.cigarstring)
+                    if bp_number == 'bp1':
+                        sv_reads['F_bp1'] += 1
+                        bpReads.write(read)
+                    else:
+                        sv_reads['F_bp2'] += 1
+                        bpReads.write(read)
+                elif re.findall(r'(\d+)[S|H].*?M', read.cigarstring):
+                    # print("Read clipped to left: %s") % (read.cigarstring)
+                    if bp_number == 'bp2':
+
+                        sv_reads['bp2_R'] += 1
+                        bpReads.write(read)
+                    else:
+                        sv_reads['bp1_R'] += 1
+                        bpReads.write(read)
+
+            elif bp_number == 'bp1':
                 if F_bp(read, bp):
                     sv_reads['F_bp1'] += 1
                     bpReads.write(read)
@@ -125,9 +143,12 @@ def guess_type(bamFile, chrom, bp, bp_number, out_dir, debug):
                 elif F_bp(read, bp):
                     sv_reads['F_bp2'] += 1
                     bpReads.write(read)
+                elif bp_F(read, bp):
+                    sv_reads['bp2_F'] += 1
+                    bpReads.write(read)
+
 
     pysam.index(out_file)
-
     sv_reads['NA'] = 0
     maxValKey = max(sv_reads, key=sv_reads.get)
 
@@ -178,12 +199,12 @@ def hone_bps(bam_in, chrom, bp, bp_class):
 
             if bp_class == 'F_bp1' or bp_class == 'F_bp2':
                 if read_end_pos == i:
-                    count+=1
+                    count += 1
                     bp_reads[i] = count
 
             elif bp_class == 'bp2_R' or bp_class == 'bp1_R':
                 if read.reference_start +1 == i:
-                    count+=1
+                    count += 1
                     bp_reads[i] = count
 
 
@@ -281,9 +302,9 @@ def get_args():
                     help="File to write parsed values to " )
 
     parser.add_option("-g", \
-                    "--guess_type", \
-                    dest="guess_type",
-                    action="store",
+                    "--guess", \
+                    dest="guess",
+                    action="store_true",
                     help="Guess type of SV for read searching" )
 
     parser.set_defaults(slop=500, out_dir='../out', purity=1, variants_out='variants_out.txt')
@@ -307,6 +328,7 @@ def worker(options):
     test     = options.test
     ratio_file = options.ratio_file
     variants_out = options.variants_out
+    guess = options.guess
 
     chrom, bp1, bp2 = re.split(':|-', region)
     bp1 = int(bp1)
@@ -323,7 +345,8 @@ def worker(options):
         else:
             print("python svSupport.py -i %s -l %s:%s-%s -s %s -p %s -f %s -o %s -v %s") % (bam_in, chrom, bp1, bp2, slop, purity, find_bps, out_dir, variants_out)
 
-    if guess_type:
+    if guess:
+        print(guess)
         bp1_reads, bp1_best_guess = guess_type(bam_in, chrom, bp1, 'bp1', out_dir, debug)
         bp1_best_guess = max(bp1_reads, key=bp1_reads.get)
         bp2_reads, bp2_best_guess = guess_type(bam_in, chrom, bp2, 'bp2', out_dir, debug)
@@ -362,9 +385,21 @@ def worker(options):
 
         make_dirs(bam_in, out_dir)
 
+        # # Would be much quicker if we could just isolate regions surrounding bps and merge into bam_in
+        # bp1_bam = pysam.Samfile(bam_in, "rb")
+        # bp1_bam = bp1_bam.fetch(chrom, bp1-1000, bp1+1000)
+        #
+        # bp2_bam = pysam.Samfile(bam_in, "rb")
+        # bp2_bam = bp2_bam.fetch(chrom, bp2-1000, bp2+1000)
+        #
+        # merge_bams('bp_regions.bam', [bp1_bam, bp2_bam])
+        #
+        # bam_in = 'bp_regions.bam'
+
+
         reads = FindReads(bam_in, chrom, bp1, bp2, slop, out_dir, debug, bp1_best_guess, bp2_best_guess)
         bp1_supporting_reads, bp1_support_count, bp1_support_bam, bp1_opposing_reads, bp1_oppose_count, bp1_oppose_bam = reads.bp1_reads()
-        bp2_supporting_reads, bp2_support_count, bp2_support_bam, bp2_opposing_reads, bp2_oppose_count, bp2_oppose_bam = reads.bp2_reads()
+        bp2_supporting_reads, bp2_support_count, bp2_support_bam, bp2_opposing_reads, bp2_oppose_count, bp2_oppose_bam = reads.bp2_reads(bp1_supporting_reads, bp1_opposing_reads)
 
         support_out = os.path.join(out_dir, "sv_support" + ".bam")
         oppose_out = os.path.join(out_dir, "sv_oppose" + ".bam")

@@ -6,19 +6,19 @@ def merge_bams(out_file, bams):
     for bam_file in bams:
         try:
             name = os.path.splitext(bam_file)[0]
-            print(name)
             sorted_bam = name + ".s" + ".bam"
             pysam.sort("-o", sorted_bam, bam_file)
+            os.remove(bam_file)
             pysam.index(sorted_bam)
             s_bams.append(sorted_bam)
         except:
-            print("Can't index %s" % bam_file)
+            print("Can't sort %s" % bam_file)
 
     in_files = ', '.join(s_bams)
-    print(in_files)
     print("Merging bam files %s into '%s'") % (in_files, out_file)
     merge_parameters = ['-f', out_file] + s_bams
     pysam.merge(*merge_parameters)
+
     #Remove individual bp files
     for bp_file in s_bams:
         try:
