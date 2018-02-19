@@ -218,18 +218,19 @@ def hone_bps(bam_in, chrom, bp, bp_class):
 
     return(maxValKey, read_count)
 
-def get_regions(bam_in, chrom, bp1, bp2, out_dir):
-    samfile = pysam.Samfile(bam_in, "rb")
+def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
+    extender = slop * 2
 
+    samfile = pysam.Samfile(bam_in, "rb")
     bp1_bam = os.path.join(out_dir, "bp1_region" + ".bam")
 
     with pysam.AlignmentFile(bp1_bam, "wb", template=samfile) as bp1_region:
-        for read in samfile.fetch(chrom, bp1-1000, bp1+1000):
+        for read in samfile.fetch(chrom, bp1-extender, bp1+extender):
             bp1_region.write(read)
 
     bp2_bam = os.path.join(out_dir, "bp2_region" + ".bam")
     with pysam.AlignmentFile(bp2_bam, "wb", template=samfile) as bp2_region:
-        for read in samfile.fetch(chrom, bp2-1000, bp2+1000):
+        for read in samfile.fetch(chrom, bp2-extender, bp2+extender):
             bp2_region.write(read)
 
     bps_bam = os.path.join(out_dir, "bp_regions" + ".bam")
@@ -403,7 +404,7 @@ def worker(options):
 
         make_dirs(bam_in, out_dir)
 
-        bam_in = get_regions(bam_in, chrom, bp1, bp2, out_dir)
+        bam_in = get_regions(bam_in, chrom, bp1, bp2, out_dir, slop)
 
 
         reads = FindReads(bam_in, chrom, bp1, bp2, slop, out_dir, debug, bp1_best_guess, bp2_best_guess)
