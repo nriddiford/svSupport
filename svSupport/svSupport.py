@@ -233,10 +233,30 @@ def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
         for read in samfile.fetch(chrom, bp2-extender, bp2+extender):
             bp2_region.write(read)
 
-    bps_bam = os.path.join(out_dir, "bp_regions" + ".bam")
+    bps_bam = os.path.join(out_dir, "bp_regs" + ".bam")
     merge_bams(bps_bam, [bp1_bam, bp2_bam])
 
-    return(bps_bam)
+    dups_rem = os.path.join(out_dir, "bp_regions" + ".bam")
+
+    with pysam.AlignmentFile(dups_rem, "wb", template=samfile) as out:
+        for read in samfile.fetch(chrom, bp1-extender, bp2+extender):
+            if read.is_duplicate:
+                continue
+            out.write(read)
+
+    try:
+        pysam.index(dups_rem)
+    except pysam.utils.SamtoolsError:
+        print("Can't index %s" % dups_rem)
+        pass
+    try:
+        os.remove(bps_bam)
+        os.remove(bps_bam + ".bai")
+    except OSError:
+        print("Can't remove %s" % bps_bam)
+        pass
+    
+    return(dups_rem)
 
 def get_args():
     parser = OptionParser()
@@ -404,10 +424,10 @@ def worker(options):
 
         make_dirs(bam_in, out_dir)
 
-        bam_in = get_regions(bam_in, chrom, bp1, bp2, out_dir, slop)
+        bp_regions = get_regions(bam_in, chrom, bp1, bp2, out_dir, slop)
 
 
-        reads = FindReads(bam_in, chrom, bp1, bp2, slop, out_dir, debug, bp1_best_guess, bp2_best_guess)
+        reads = FindReads(bp_regions, chrom, bp1, bp2, slop, out_dir, debug, bp1_best_guess, bp2_best_guess)
         bp1_supporting_reads, bp1_support_count, bp1_support_bam, bp1_opposing_reads, bp1_oppose_count, bp1_oppose_bam = reads.bp1_reads()
         bp2_supporting_reads, bp2_support_count, bp2_support_bam, bp2_opposing_reads, bp2_oppose_count, bp2_oppose_bam = reads.bp2_reads(bp1_supporting_reads, bp1_opposing_reads)
 
