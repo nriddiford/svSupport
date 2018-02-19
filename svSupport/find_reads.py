@@ -72,14 +72,17 @@ class FindReads(object):
                 if read.is_duplicate:
                     continue
 
+                read_start = read.reference_start +1
+                mate_start = mate.reference_start +1
+
                 # deletion
                 if self.bp1_class == 'F_bp1' and self.bp2_class == 'bp2_R':
-                    mate_start = mate.reference_start +1
+
 
                     if read.reference_name != mate.reference_name:
                         continue
                     # supporting
-                    if read_end_pos <= self.bp1 and mate.reference_start >= self.bp2:
+                    if read_end_pos <= self.bp1 and mate_start >= self.bp2:
                         self.print_and_write_bp1(read, mate, bp1_supporting_reads, supporting_reads, 'disc_read', 'supporting', read_end_pos, mate_end_pos)
                     elif read_end_pos == self.bp1 and re.findall(r'(\d+)[S|H]', read.cigarstring):
                         self.print_and_write_bp1(read, mate, bp1_supporting_reads, supporting_reads, 'clipped_read', 'supporting', read_end_pos, mate_end_pos)
@@ -114,18 +117,18 @@ class FindReads(object):
                     if read.reference_name != mate.reference_name:
                         continue
                     # supporting
-                    if not read.is_proper_pair and read.reference_start >= self.bp1 and read.reference_start <= self.bp2 and mate.reference_start +1 >= self.bp2:
+                    if not read.is_proper_pair and read_start >= self.bp1 and read_start <= self.bp2 and mate_start >= self.bp2:
                         self.print_and_write_bp1(read, mate, bp1_supporting_reads, supporting_reads, 'disc_read', 'supporting', read_end_pos, mate_end_pos)
 
                     # change 13.2.18 - need to sort out 0/1 based start - this works for type II...
-                    elif read.reference_start == self.bp1 and re.findall(r'(\d+)[S|H]', read.cigarstring):
+                    elif read_start == self.bp1 and re.findall(r'(\d+)[S|H]', read.cigarstring):
                         self.print_and_write_bp1(read, mate, bp1_supporting_reads, supporting_reads, 'clipped_read', 'supporting', read_end_pos, mate_end_pos)
 
                     # opposing
                     elif read.qname not in supporting_reads:
-                        if ( read.reference_start > self.bp1 and mate.reference_start < self.bp1 ) or (read_end_pos < self.bp1 and mate.reference_start > self.bp1):
+                        if ( read_start > self.bp1 and mate_start < self.bp1 ) or (read_end_pos < self.bp1 and mate_start > self.bp1):
                             self.print_and_write_bp1(read, mate, bp1_opposing_reads, opposing_reads, 'mate_pair', 'opposing', read_end_pos, mate_end_pos)
-                        elif read.reference_start < self.bp1 and read_end_pos > self.bp1:
+                        elif read_start < self.bp1 and read_end_pos > self.bp1:
                             self.print_and_write_bp1(read, mate, bp1_opposing_reads, opposing_reads, 'spanning', 'opposing', read_end_pos, mate_end_pos)
 
                 else:
@@ -168,12 +171,14 @@ class FindReads(object):
 
                 if read.is_duplicate:
                     continue
+                read_start = read.reference_start +1
+                mate_start = mate.reference_start +1
 
                 # deletion
                 if self.bp1_class == 'F_bp1' and self.bp2_class == 'bp2_R':
                     # supporting
-                    read_start = read.reference_start +1
-                    mate_start = mate.reference_start +1
+                    # read_start = read.reference_start +1
+                    # mate_start = mate.reference_start +1
                     if read_start >= self.bp2 and mate_end_pos <= self.bp1:
                     # if not read.is_proper_pair and read.is_reverse and mate_end_pos < self.bp1:
                         self.print_and_write_bp2(read, mate, bp1_supporting_reads, bp1_opposing_reads, bp2_supporting_reads, supporting_reads, 'disc_read', 'supporting', read_end_pos, mate_end_pos)
@@ -200,25 +205,25 @@ class FindReads(object):
 
                     # opposing
                     elif read.qname not in supporting_reads:
-                        if (read_end_pos < self.bp1 and mate.reference_start > self.bp1 and mate.reference_start < self.bp2) or (read.reference_start > self.bp1 and mate_end_pos < self.bp1):
+                        if (read_end_pos < self.bp1 and mate_start > self.bp1 and mate_start < self.bp2) or (read_start > self.bp1 and mate_end_pos < self.bp1):
                             self.print_and_write_bp2(read, mate, bp1_supporting_reads, bp1_opposing_reads, bp2_opposing_reads, opposing_reads, 'mate_pair', 'opposing', read_end_pos, mate_end_pos)
-                        elif read.reference_start < self.bp1 and read_end_pos > self.bp1:
+                        elif read_start < self.bp1 and read_end_pos > self.bp1:
                             self.print_and_write_bp2(read, mate, bp1_supporting_reads, bp1_opposing_reads, bp2_opposing_reads, opposing_reads, 'spanning', 'opposing', read_end_pos, mate_end_pos)
 
                 # type II inversion - ('bp1_R', 'bp2_R')
                 elif self.bp1_class == 'bp1_R' and self.bp2_class == 'bp2_R':
                     # supporting
-                    if not read.is_proper_pair and read.reference_start +1 >= self.bp2 and mate.reference_start >= self.bp1 and mate_end_pos < self.bp2:
+                    if not read.is_proper_pair and read_start >= self.bp2 and mate_start >= self.bp1 and mate_end_pos < self.bp2:
                         self.print_and_write_bp2(read, mate, bp1_supporting_reads, bp1_opposing_reads, bp2_supporting_reads, supporting_reads, 'disc_read', 'supporting', read_end_pos, mate_end_pos)
 
-                    elif read.reference_start == self.bp2 and re.findall(r'(\d+)[S|H]', read.cigarstring):
+                    elif read_start == self.bp2 and re.findall(r'(\d+)[S|H]', read.cigarstring):
                         self.print_and_write_bp2(read, mate, bp1_supporting_reads, bp1_opposing_reads, bp2_supporting_reads, supporting_reads, 'clipped_read', 'supporting', read_end_pos, mate_end_pos)
 
                     # opposing
                     elif read.qname not in supporting_reads:
-                        if ( read_end_pos < self.bp2 and mate.reference_start > self.bp2 ) or (read.reference_start > self.bp2 and mate_end_pos < self.bp2):
+                        if ( read_end_pos < self.bp2 and mate_start > self.bp2 ) or (read_start > self.bp2 and mate_end_pos < self.bp2):
                             self.print_and_write_bp2(read, mate, bp1_supporting_reads, bp1_opposing_reads, bp2_opposing_reads, opposing_reads, 'mate_pair', 'opposing', read_end_pos, mate_end_pos)
-                        elif read.reference_start < self.bp2 and read_end_pos > self.bp2:
+                        elif read_start < self.bp2 and read_end_pos > self.bp2:
                             self.print_and_write_bp2(read, mate, bp1_supporting_reads, bp1_opposing_reads, bp2_opposing_reads, opposing_reads, 'spanning', 'opposing', read_end_pos, mate_end_pos)
 
                 else:
