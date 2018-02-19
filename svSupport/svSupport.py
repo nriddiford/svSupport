@@ -96,8 +96,8 @@ def bp_F(read, bp):
 
 def guess_type(bamFile, chrom, bp, bp_number, out_dir, debug):
     samfile = pysam.Samfile(bamFile, "rb")
-    start = bp - 500
-    stop = bp + 500
+    start = bp - 200
+    stop = bp + 200
 
     sv_reads = defaultdict(int)
 
@@ -218,6 +218,24 @@ def hone_bps(bam_in, chrom, bp, bp_class):
 
     return(maxValKey, read_count)
 
+def get_regions(bam_in, chrom, bp1, bp2, out_dir):
+    samfile = pysam.Samfile(bam_in, "rb")
+
+    bp1_bam = os.path.join(out_dir, "bp1_region" + ".bam")
+
+    with pysam.AlignmentFile(bp1_bam, "wb", template=samfile) as bp1_region:
+        for read in samfile.fetch(chrom, bp1-1000, bp1+1000):
+            bp1_region.write(read)
+
+    bp2_bam = os.path.join(out_dir, "bp2_region" + ".bam")
+    with pysam.AlignmentFile(bp2_bam, "wb", template=samfile) as bp2_region:
+        for read in samfile.fetch(chrom, bp2-1000, bp2+1000):
+            bp2_region.write(read)
+
+    bps_bam = os.path.join(out_dir, "bp_regions" + ".bam")
+    merge_bams(bps_bam, [bp1_bam, bp2_bam])
+
+    return(bps_bam)
 
 def get_args():
     parser = OptionParser()
@@ -354,12 +372,12 @@ def worker(options):
 
         if bp1_best_guess == 'F_bp1' and bp2_best_guess == 'bp2_R':
             print("Deletion")
-        elif bp1_best_guess == 'bp1_R' and bp2_best_guess == 'bp2_R':
-            print("Inversion type I")
         elif bp1_best_guess == 'F_bp1' and bp2_best_guess == 'F_bp2':
+            print("Inversion type I")
+        elif bp1_best_guess == 'bp1_R' and bp2_best_guess == 'bp2_R':
             print("Inversion type II")
         elif bp1_best_guess == 'bp1_R' and bp2_best_guess == 'F_bp2':
-            print("Duplication")
+            print("Tandem duplication")
         elif bp1_best_guess == 'NA' and bp2_best_guess == 'NA':
             print("* Can't classify SV - will continue assuming a deletion as default")
         else:
@@ -385,16 +403,7 @@ def worker(options):
 
         make_dirs(bam_in, out_dir)
 
-        # # Would be much quicker if we could just isolate regions surrounding bps and merge into bam_in
-        # bp1_bam = pysam.Samfile(bam_in, "rb")
-        # bp1_bam = bp1_bam.fetch(chrom, bp1-1000, bp1+1000)
-        #
-        # bp2_bam = pysam.Samfile(bam_in, "rb")
-        # bp2_bam = bp2_bam.fetch(chrom, bp2-1000, bp2+1000)
-        #
-        # merge_bams('bp_regions.bam', [bp1_bam, bp2_bam])
-        #
-        # bam_in = 'bp_regions.bam'
+        bam_in = get_regions(bam_in, chrom, bp1, bp2, out_dir)
 
 
         reads = FindReads(bam_in, chrom, bp1, bp2, slop, out_dir, debug, bp1_best_guess, bp2_best_guess)
