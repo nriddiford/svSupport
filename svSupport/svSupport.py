@@ -260,11 +260,12 @@ def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
 
 def cleanup(out_dir):
     print("Cleaning up old files in %s" % out_dir)
-    for old_file in out_dir:
+    for f in os.listdir(out_dir):
         try:
-            os.remove(old_file)
+            abs_file = os.path.join(out_dir, f)
+            os.remove(abs_file)
         except OSError:
-            print("Can't remove %s" % old_file)
+            print("Can't remove %s" % abs_file)
             pass
 
 def get_args():
@@ -355,7 +356,8 @@ def get_args():
                     action="store_true",
                     help="Guess type of SV for read searching" )
 
-    parser.set_defaults(slop=500, out_dir='../out', purity=1, variants_out='variants_out.txt')
+    out_path = os.path.abspath('../out')
+    parser.set_defaults(slop=500, out_dir=out_path, purity=1, variants_out='variants_out.txt')
     options, args = parser.parse_args()
 
     if (options.in_file is None or options.region is None) and options.test is False and options.config is None:
