@@ -244,10 +244,9 @@ def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
                 continue
             out.write(read)
 
-    out.close()
     try:
         pysam.index(dups_rem)
-    except pysam.utils.SamtoolsError:
+    except:
         print("Can't index %s" % dups_rem)
         pass
     try:
