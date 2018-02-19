@@ -244,6 +244,7 @@ def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
                 continue
             out.write(read)
 
+    out.close()
     try:
         pysam.index(dups_rem)
     except pysam.utils.SamtoolsError:
@@ -255,7 +256,7 @@ def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
     except OSError:
         print("Can't remove %s" % bps_bam)
         pass
-    
+
     return(dups_rem)
 
 def get_args():
