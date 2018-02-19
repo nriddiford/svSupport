@@ -234,7 +234,7 @@ def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
             bp2_region.write(read)
 
     bps_bam = os.path.join(out_dir, "bp_regs" + ".bam")
-    merge_bams(bps_bam, [bp1_bam, bp2_bam])
+    merge_bams(bps_bam, out_dir, [bp1_bam, bp2_bam])
 
     dups_rem = os.path.join(out_dir, "bp_regions" + ".bam")
 
@@ -398,7 +398,6 @@ def worker(options):
             print("python svSupport.py -i %s -l %s:%s-%s -s %s -p %s -f %s -o %s -v %s") % (bam_in, chrom, bp1, bp2, slop, purity, find_bps, out_dir, variants_out)
 
     if guess:
-        print(guess)
         bp1_reads, bp1_best_guess = guess_type(bam_in, chrom, bp1, 'bp1', out_dir, debug)
         bp1_best_guess = max(bp1_reads, key=bp1_reads.get)
         bp2_reads, bp2_best_guess = guess_type(bam_in, chrom, bp2, 'bp2', out_dir, debug)
@@ -447,20 +446,20 @@ def worker(options):
         support_out = os.path.join(out_dir, "sv_support" + ".bam")
         oppose_out = os.path.join(out_dir, "sv_oppose" + ".bam")
 
-        merge_bams(support_out, [bp1_support_bam, bp2_support_bam])
-        merge_bams(oppose_out, [bp1_oppose_bam, bp2_oppose_bam])
+        merge_bams(support_out, out_dir, [bp1_support_bam, bp2_support_bam])
+        merge_bams(oppose_out, out_dir, [bp1_oppose_bam, bp2_oppose_bam])
 
-        all_su_reads = bp1_supporting_reads + bp2_supporting_reads
-        total_support = len(set(all_su_reads))
-
-        all_op_reads = bp1_opposing_reads + bp2_opposing_reads
-        total_oppose = len(set(all_op_reads))
-
-        print("* Found %s reads in support of variant" % total_support)
-        print("* Found %s reads opposing variant" % total_oppose)
-
-        allele_frequency = calculate_allele_freq(total_support, total_oppose, purity)
-        return(chrom, bp1, bp2, allele_frequency)
+        # all_su_reads = bp1_supporting_reads + bp2_supporting_reads
+        # total_support = len(set(all_su_reads))
+        #
+        # all_op_reads = bp1_opposing_reads + bp2_opposing_reads
+        # total_oppose = len(set(all_op_reads))
+        #
+        # print("* Found %s reads in support of variant" % total_support)
+        # print("* Found %s reads opposing variant" % total_oppose)
+        #
+        # allele_frequency = calculate_allele_freq(total_support, total_oppose, purity)
+        # return(chrom, bp1, bp2, allele_frequency)
 
 
 # @profile

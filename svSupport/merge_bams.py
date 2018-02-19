@@ -1,12 +1,12 @@
 import pysam
 import os
 
-def merge_bams(out_file, bams):
+def merge_bams(out_file, out_dir, bams):
     s_bams = []
     for bam_file in bams:
         try:
             name = os.path.splitext(bam_file)[0]
-            sorted_bam = name + ".s" + ".bam"
+            sorted_bam = os.path.join(out_dir, name + ".s" + ".bam")
             pysam.sort("-o", sorted_bam, bam_file)
             os.remove(bam_file)
             pysam.index(sorted_bam)
