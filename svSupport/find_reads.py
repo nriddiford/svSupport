@@ -19,6 +19,7 @@ o query_name             =   Read name (formaerly 'qname')
 class FindReads(object):
     def __init__(self, bam_in, chrom, bp1, bp2, slop, out_dir, debug, bp1_class, bp2_class):
 
+
         self.bam_in = bam_in
         self.chrom = chrom
         self.bp1 = bp1
@@ -28,6 +29,8 @@ class FindReads(object):
         self.debug = debug
         self.bp1_class = bp1_class
         self.bp2_class = bp2_class
+
+        pysam.index(self.bam_in)
 
     def set_window(self, breakpoint):
 
@@ -140,13 +143,13 @@ class FindReads(object):
         return(supporting_reads, support_count, support_out, opposing_reads, oppose_count, oppose_out)
 
 
-    def print_and_write_bp1(self, read, mate, read_bam, read_list, evidence, for_against, read_end_pos, mate_end_pos):
+    def print_and_write_bp1(self, read, mate, out_bam, read_list, evidence, for_against, read_end_pos, mate_end_pos):
         if self.debug:
             print("* bp1 %s %s read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (evidence, for_against, read.query_name, read.seq, read.reference_start, read_end_pos, mate.reference_start, mate_end_pos)
         if read.query_name not in read_list:
-            read_bam.write(read)
+            out_bam.write(read)
             if evidence == 'mate_pair' or evidence == 'disc_read':
-                read_bam.write(mate)
+                out_bam.write(mate)
             read_list.append(read.query_name)
 
 
@@ -236,11 +239,11 @@ class FindReads(object):
         return(supporting_reads, support_count, support_out, opposing_reads, oppose_count, oppose_out)
 
 
-    def print_and_write_bp2(self, read, mate, bp1_supporting_reads, bp1_opposing_reads, read_bam, read_list, evidence, for_against, read_end_pos, mate_end_pos):
+    def print_and_write_bp2(self, read, mate, bp1_supporting_reads, bp1_opposing_reads, out_bam, read_list, evidence, for_against, read_end_pos, mate_end_pos):
         if self.debug:
             print("* bp2 %s %s read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (evidence, for_against, read.query_name, read.seq, read.reference_start +1, read_end_pos, mate.reference_start +1, mate_end_pos)
-        if read.query_name not in bp1_supporting_reads and read.query_name not in bp1_opposing_reads:
-            read_bam.write(read)
+        if read.query_name not in bp1_supporting_reads and read.query_name not in bp1_opposing_reads and read.query_name not in read_list:
+            out_bam.write(read)
             if evidence == 'mate_pair' or evidence == 'disc_read':
-                read_bam.write(mate)
+                out_bam.write(mate)
             read_list.append(read.query_name)
