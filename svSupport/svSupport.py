@@ -258,6 +258,15 @@ def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
 
     return(dups_rem)
 
+def cleanup(out_dir):
+    print("Cleaning up old files in %s" % out_dir)
+    for old_file in out_dir:
+        try:
+            os.remove(old_file)
+        except OSError:
+            print("Can't remove %s" % old_file)
+            pass
+
 def get_args():
     parser = OptionParser()
 
@@ -377,6 +386,8 @@ def worker(options):
     if debug:
         print_options(bam_in, ratio_file, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir)
 
+
+    cleanup(out_dir)
 
     if options.config:
         if ratio_file is not None:
