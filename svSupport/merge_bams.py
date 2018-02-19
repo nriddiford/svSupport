@@ -22,10 +22,11 @@ def merge_bams(out_file, out_dir, bams):
     #Remove individual bp files
     for bp_file in s_bams:
         try:
-            os.remove(bp_file)
-            os.remove(bp_file + ".bai")
+            abs_file = os.path.join(out_dir, bp_file)
+            os.remove(abs_file)
+            os.remove(abs_file + ".bai")
         except OSError:
-            print("Couldn't remove %s" % bp_file)
+            print("Couldn't remove %s" % abs_file)
             pass
 
     try:
