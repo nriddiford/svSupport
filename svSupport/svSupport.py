@@ -449,17 +449,17 @@ def worker(options):
         merge_bams(support_out, out_dir, [bp1_support_bam, bp2_support_bam])
         merge_bams(oppose_out, out_dir, [bp1_oppose_bam, bp2_oppose_bam])
 
-        # all_su_reads = bp1_supporting_reads + bp2_supporting_reads
-        # total_support = len(set(all_su_reads))
-        #
-        # all_op_reads = bp1_opposing_reads + bp2_opposing_reads
-        # total_oppose = len(set(all_op_reads))
-        #
-        # print("* Found %s reads in support of variant" % total_support)
-        # print("* Found %s reads opposing variant" % total_oppose)
-        #
-        # allele_frequency = calculate_allele_freq(total_support, total_oppose, purity)
-        # return(chrom, bp1, bp2, allele_frequency)
+        all_su_reads = bp1_supporting_reads + bp2_supporting_reads
+        total_support = len(set(all_su_reads))
+
+        all_op_reads = bp1_opposing_reads + bp2_opposing_reads
+        total_oppose = len(set(all_op_reads))
+
+        print("* Found %s reads in support of variant" % total_support)
+        print("* Found %s reads opposing variant" % total_oppose)
+
+        allele_frequency = calculate_allele_freq(total_support, total_oppose, purity)
+        return(chrom, bp1, bp2, allele_frequency)
 
 
 # @profile
