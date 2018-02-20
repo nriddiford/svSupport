@@ -400,16 +400,19 @@ def worker(options):
 
         if bp1_best_guess == 'F_bp1' and bp2_best_guess == 'bp2_R':
             print("Deletion")
+            print("__\ bp1 ... bp2 /__")
         elif bp1_best_guess == 'F_bp1' and bp2_best_guess == 'F_bp2':
             print("Inversion type I")
+            print("__\ bp1 ... __\ bp2")
         elif bp1_best_guess == 'bp1_R' and bp2_best_guess == 'bp2_R':
             print("Inversion type II")
+            print("bp1 /__ ... bp2 /__")
         elif bp1_best_guess == 'bp1_R' and bp2_best_guess == 'F_bp2':
             print("Tandem duplication")
-        elif bp1_best_guess == 'NA' and bp2_best_guess == 'NA':
-            print("* Can't classify SV - will continue assuming a deletion as default")
+            print("bp1 /__ ... __\ bp2")
         else:
-            print("-> Don't know")
+            print("-> Can't predict sv type - assuming deletion")
+            print("__\ bp1 ... bp2 /__")
             bp1_best_guess, bp2_best_guess = 'F_bp1', 'bp2_R'
 
     else:
