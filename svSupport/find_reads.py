@@ -30,8 +30,6 @@ class FindReads(object):
         self.bp1_class = bp1_class
         self.bp2_class = bp2_class
 
-        pysam.index(self.bam_in)
-
     def set_window(self, breakpoint):
 
         if self.bp1_class == 'F_bp1':

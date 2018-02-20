@@ -33,4 +33,10 @@ def merge_bams(out_file, out_dir, bams):
         pysam.index(out_file)
     except pysam.utils.SamtoolsError:
         print("Can't index %s" % out_file)
-        pass
+        try:
+            command = ' '.join("samtools index ", out_file)
+            print("Trying a shell call %s" % command)
+            call(command, shell=True)
+        except:
+            print("Can't index %s" % out_file)
+            pass

@@ -247,8 +247,14 @@ def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
     try:
         pysam.index(dups_rem)
     except:
-        print("Can't index %s" % dups_rem)
-        pass
+        try:
+            command = ' '.join("samtools index ", dups_rem)
+            print("Trying a shell call %s" % command)
+            call(command, shell=True)
+        except:
+            print("tried shell call")
+            print("Can't index %s" % dups_rem)
+            pass
     try:
         os.remove(bps_bam)
         os.remove(bps_bam + ".bai")
