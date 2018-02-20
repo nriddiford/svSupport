@@ -8,6 +8,7 @@ from collections import defaultdict
 from optparse import OptionParser
 from find_reads import FindReads
 from merge_bams import merge_bams
+import ntpath
 
 def parse_config(options):
     print
@@ -237,6 +238,7 @@ def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
     merge_bams(bps_bam, out_dir, [bp1_bam, bp2_bam])
 
     dups_rem = os.path.join(out_dir, "bp_regions" + ".bam")
+    print(dups_rem)
 
     with pysam.AlignmentFile(dups_rem, "wb", template=samfile) as out:
         for read in samfile.fetch(chrom, bp1-extender, bp2+extender):
@@ -244,25 +246,33 @@ def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
                 continue
             out.write(read)
 
-    try:
-        pysam.index(dups_rem)
-    except:
-        command = ' '.join(["samtools index ", dups_rem])
-        try:
-            print("Trying a shell call %s" % command)
-            call(command, shell=True)
-        except:
-            print("Tried shell call in svSu: %s" % command)
-            print("Can't index %s" % dups_rem)
-            pass
-    try:
-        os.remove(bps_bam)
-        os.remove(bps_bam + ".bai")
-    except OSError:
-        print("Can't remove %s" % bps_bam)
-        pass
+    head, file_name = ntpath.split(dups_rem)
+    de_duped_bam = os.path.splitext(file_name)[0]
 
-    return(dups_rem)
+    sorted_bam = os.path.join(out_dir, de_duped_bam + ".s" + ".bam")
+    pysam.sort("-o", sorted_bam, dups_rem)
+    pysam.index(sorted_bam)
+
+
+    # try:
+    #     pysam.index(dups_rem)
+    # except:
+    #     command = ' '.join(["samtools index ", dups_rem])
+    #     try:
+    #         print("Trying a shell call %s" % command)
+    #         call(command, shell=True)
+    #     except:
+    #         print("Tried shell call in svSu: %s" % command)
+    #         print("Can't index %s" % dups_rem)
+    #         pass
+    # try:
+    #     os.remove(bps_bam)
+    #     os.remove(bps_bam + ".bai")
+    # except OSError:
+    #     print("Can't remove %s" % bps_bam)
+    #     pass
+
+    return(sorted_bam)
 
 def cleanup(out_dir):
     print("Cleaning up old files in %s" % out_dir)
@@ -443,7 +453,6 @@ def worker(options):
         make_dirs(bam_in, out_dir)
 
         bp_regions = get_regions(bam_in, chrom, bp1, bp2, out_dir, slop)
-
 
         reads = FindReads(bp_regions, chrom, bp1, bp2, slop, out_dir, debug, bp1_best_guess, bp2_best_guess)
         bp1_supporting_reads, bp1_support_count, bp1_support_bam, bp1_opposing_reads, bp1_oppose_count, bp1_oppose_bam = reads.bp1_reads()

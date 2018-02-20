@@ -37,6 +37,7 @@ def merge_bams(out_file, out_dir, bams):
             print("Couldn't remove %s" % abs_file)
             pass
 
+    return(sorted_bam)
     # try:
     #     pysam.index(out_file)
     # except pysam.utils.SamtoolsError:
