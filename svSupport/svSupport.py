@@ -410,6 +410,7 @@ def worker(options):
         elif bp1_best_guess == 'bp1_R' and bp2_best_guess == 'F_bp2':
             print("Tandem duplication")
             print("bp1 /__ ... __\ bp2")
+            bp1_best_guess, bp2_best_guess = 'F_bp1', 'bp2_R'
         else:
             print("-> Can't predict sv type - assuming deletion")
             print("__\ bp1 ... bp2 /__")
