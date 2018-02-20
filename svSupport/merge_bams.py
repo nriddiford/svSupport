@@ -38,6 +38,6 @@ def merge_bams(out_file, out_dir, bams):
             print("Trying a shell call %s" % command)
             call(command, shell=True)
         except:
-            print("tried shell call: %s" % command)
+            print("Tried shell call in merge_bams: %s" % command)
             print("Can't index %s" % out_file)
             pass
