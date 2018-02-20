@@ -1,18 +1,23 @@
 import pysam
 import os
+import ntpath
 
 def merge_bams(out_file, out_dir, bams):
     s_bams = []
     for bam_file in bams:
         try:
             name = os.path.splitext(bam_file)[0]
-            sorted_bam = os.path.join(out_dir, name + ".s" + ".bam")
+            head, file_name = ntpath.split(bam_file)
+            sorted_bam = os.path.join(out_dir, file_name + ".s" + ".bam")
             pysam.sort("-o", sorted_bam, bam_file)
             os.remove(bam_file)
-            pysam.index(sorted_bam)
             s_bams.append(sorted_bam)
         except:
             print("Can't sort %s" % bam_file)
+        try:
+            pysam.index(sorted_bam)
+        except:
+            print("Can't index %s" % sorted_bam)
 
     in_files = ', '.join(s_bams)
     print("Merging bam files %s into '%s'") % (in_files, out_file)
