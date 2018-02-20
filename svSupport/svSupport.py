@@ -252,7 +252,7 @@ def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
             print("Trying a shell call %s" % command)
             call(command, shell=True)
         except:
-            print("tried shell call")
+            print("tried shell call: %s" % command)
             print("Can't index %s" % dups_rem)
             pass
     try:
