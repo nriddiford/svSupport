@@ -248,7 +248,7 @@ def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
         pysam.index(dups_rem)
     except:
         try:
-            command = ' '.join("samtools index ", dups_rem)
+            command = ' '.join(["samtools index ", out_file])
             print("Trying a shell call %s" % command)
             call(command, shell=True)
         except:
