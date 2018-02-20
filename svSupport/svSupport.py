@@ -157,10 +157,8 @@ def guess_type(bamFile, chrom, bp, bp_number, out_dir, debug):
 
 
 def get_depth(chrom, bp1, bp2, ratio_file):
-
     count = 1
     cum_ratio = 0
-
     with open(ratio_file, 'r') as depth_ratios:
         for l in depth_ratios:
             parts = l.rstrip().split('\t')
@@ -252,25 +250,6 @@ def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
     sorted_bam = os.path.join(out_dir, de_duped_bam + ".s" + ".bam")
     pysam.sort("-o", sorted_bam, dups_rem)
     pysam.index(sorted_bam)
-
-
-    # try:
-    #     pysam.index(dups_rem)
-    # except:
-    #     command = ' '.join(["samtools index ", dups_rem])
-    #     try:
-    #         print("Trying a shell call %s" % command)
-    #         call(command, shell=True)
-    #     except:
-    #         print("Tried shell call in svSu: %s" % command)
-    #         print("Can't index %s" % dups_rem)
-    #         pass
-    # try:
-    #     os.remove(bps_bam)
-    #     os.remove(bps_bam + ".bai")
-    # except OSError:
-    #     print("Can't remove %s" % bps_bam)
-    #     pass
 
     return(sorted_bam)
 
