@@ -39,10 +39,3 @@ def region_depth(bamfile, chrom, bp1, bp2):
 
     print("Reads in %s:%s-%s: %s") % (chrom, bp1, bp2, count)
     return(count)
-
-def scale_factor(mappped_reads):
-    scale_factor = 1
-    # the CPM (norm is based on post-filtering total counts of reads in BAM "bam_mapped")
-    million_reads_mapped = float(mappped_reads) / 1e6
-    scale_factor *= 1.0 / (million_reads_mapped)
-    print("scale_factor = %s" % scale_factor)
