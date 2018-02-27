@@ -33,10 +33,14 @@ def sort_bam(out_dir, bam):
 
     try:
         pysam.sort("-o", sorted_bam, bam)
-        os.remove(bam)
         index_bam(sorted_bam)
     except:
         print("Can't sort %s" % bam)
+
+    try:
+        os.remove(bam)
+    except:
+        print("Can't remove %s" % bam)
 
     return(sorted_bam)
 

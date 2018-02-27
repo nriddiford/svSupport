@@ -114,6 +114,10 @@ class FindReads(object):
 
                 # type II inversion - ('bp1_R', 'bp2_R')
                 elif self.bp1_class == 'bp1_R' and self.bp2_class == 'bp2_R':
+                    if read.query_name == 'DB9GZKS1:373:HGFF5BCXX:1:2214:11868:93874':
+                        print("Read start == %s" % read_start)
+                        print("Bp1 == %s " % self.bp1)
+
                     if read.reference_name != mate.reference_name:
                         continue
                     # supporting
@@ -122,6 +126,7 @@ class FindReads(object):
 
                     # change 13.2.18 - need to sort out 0/1 based start - this works for type II...
                     elif read_start == self.bp1 and re.findall(r'(\d+)[S|H]', read.cigarstring):
+                        print("read")
                         self.print_and_write_bp1(read, mate, bp1_supporting_reads, supporting_reads, 'clipped_read', 'supporting', read_end_pos, mate_end_pos)
 
                     # opposing
@@ -133,7 +138,8 @@ class FindReads(object):
 
                 else:
                     print("Reads must be classified")
-                    sys.exit()
+                    continue
+                    # sys.exit()
 
         support_count = len(set(supporting_reads))
         oppose_count = len(set(opposing_reads))
@@ -143,7 +149,7 @@ class FindReads(object):
 
     def print_and_write_bp1(self, read, mate, out_bam, read_list, evidence, for_against, read_end_pos, mate_end_pos):
         if self.debug:
-            print("* bp1 %s %s read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (evidence, for_against, read.query_name, read.seq, read.reference_start, read_end_pos, mate.reference_start, mate_end_pos)
+            print("* bp1 %s %s read    : %s %s [rs:e: %s-%s, ms:e: %s-%s]") % (evidence, for_against, read.query_name, read.seq, read.reference_start + 1, read_end_pos, mate.reference_start + 1, mate_end_pos)
         if read.query_name not in read_list:
             out_bam.write(read)
             if evidence == 'mate_pair' or evidence == 'disc_read':

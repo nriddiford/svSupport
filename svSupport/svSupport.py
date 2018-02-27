@@ -7,6 +7,7 @@ import pandas as pd
 from collections import defaultdict
 from optparse import OptionParser
 from find_reads import FindReads
+from tumour_purity import Purity
 from merge_bams import merge_bams, sort_bam
 import ntpath
 from count_reads import count_reads, region_depth
@@ -52,7 +53,7 @@ def parse_config(options):
     af_out.close()
 
 
-def calculate_allele_freq(total_support, total_oppose, tumour_purity, depth):
+def calculate_allele_freq(total_support, total_oppose, tumour_purity):
     print("* Tumour purity set to %s" % tumour_purity)
     allele_frequency = float( total_support/(total_support+total_oppose) )
     if tumour_purity == 1:
@@ -88,13 +89,16 @@ def F_bp(read, bp):
     if not read.is_proper_pair and (not read.is_reverse and read.reference_start + read.reference_length <= bp):
         return True
 
+
 def bp_R(read, bp):
     if not read.is_proper_pair and (read.is_reverse and read.reference_start >= bp):
         return True
 
+
 def bp_F(read, bp):
     if not read.is_proper_pair and (not read.is_reverse and read.reference_start >= bp):
         return True
+
 
 def guess_type(bamFile, chrom, bp, bp_number, out_dir, debug):
     samfile = pysam.Samfile(bamFile, "rb")
@@ -123,7 +127,6 @@ def guess_type(bamFile, chrom, bp, bp_number, out_dir, debug):
                 elif re.findall(r'(\d+)[S|H].*?M', read.cigarstring):
                     # print("Read clipped to left: %s") % (read.cigarstring)
                     if bp_number == 'bp2':
-
                         sv_reads['bp2_R'] += 1
                         bpReads.write(read)
                     else:
@@ -157,100 +160,31 @@ def guess_type(bamFile, chrom, bp, bp_number, out_dir, debug):
     return(sv_reads, maxValKey)
 
 
-def bedtools(filename):
-    """simulate the behaviour of bedtools"""
-    bamfile=pysam.AlignmentFile(filename,'rb')
+def get_depth(bam_in, normal, chrom, bp1, bp2 ):
+    chromosomes = ['2L', '2R', '3L', '3R', '4', 'X', 'Y']
+    t_reads_by_chrom, tumour_mapped = count_reads(bam_in, chromosomes)
+    t_read_count = region_depth(bam_in, chrom, bp1, bp2)
 
-    for ref in bamfile.header['SQ']:
-        name=ref['SN']
-        read_count = {}
-        pileup=bamfile.pileup()
-        for pos,column in enumerate(pileup,1):
-            depth=column.nsegments
-            print(name,pos,depth)
-            read_count[name] += depth
-            # if pos >= 10:
-            #     break
-    for c in read_count:
-        print(c, read_count[c])
+    n_reads_by_chrom, normal_mapped = count_reads(normal, chromosomes)
+    n_read_count = region_depth(normal, chrom, bp1, bp2)
 
-def get_depth(chrom, bp1, bp2, ratio_file, purity):
-    count = 1
-    cum_ratio = 0
-    with open(ratio_file, 'r') as depth_ratios:
-        for l in depth_ratios:
-            parts = l.rstrip().split('\t')
-            if parts[0] == 'Chromosome':
-                continue
+    mapped_ratio = tumour_mapped/normal_mapped
 
-            pos = int(parts[1])
-            ratio = float(parts[2]) * 2
+    raw_ratio = round(t_read_count/n_read_count, 2)
+    print("Calculating read count ratio in region: %s:%s-%s") % (chrom, bp1, bp2)
+    print("Unadjusted read count ratio: %s") % (raw_ratio)
 
-            if parts[0] == chrom and pos >= bp1 and pos <= bp2:
-                print(parts[:3])
-                cum_ratio += ratio
-                count += 1
+    if raw_ratio < 1:
+        t_corr = t_read_count
+        n_corr = round(n_read_count * mapped_ratio)
+    else:
+        t_corr = round(t_read_count * mapped_ratio)
+        n_corr = n_read_count
 
-        average_ratio = cum_ratio/count
+    adj_ratio = round(t_corr/n_corr,2)
+    print("Normalised read count ratio: %s") % (adj_ratio)
 
-        print("Average ratio: %s" % average_ratio)
-        print("count: %s" % count)
-
-        if average_ratio <= 1:
-            allele_frequency = (1-abs(average_ratio))
-            print ("Deletion")
-        else:
-            allele_frequency = 1-(1/abs(average_ratio))
-            print ("Duplication")
-        allele_frequency = "{:.2f}".format(allele_frequency)
-
-        print("* Allele frequency derived from read depth ratio = %s") % (allele_frequency)
-        return(allele_frequency)
-
-
-# def get_depth(chrom, bp1, bp2, ratio_file, purity):
-#     count = 1
-#     cum_ratio = 0
-#     cum_test = 0
-#     cum_ref = 0
-#     with open(ratio_file, 'r') as depth_ratios:
-#         for l in depth_ratios:
-#             parts = l.rstrip().split('\t')
-#             if parts[0] == 'chromosome':
-#                 continue
-#
-#             start = int(parts[1])
-#             end = int(parts[2])
-#             test = int(parts[3]) + 0.001
-#             ref = int(parts[4]) + 0.001
-#
-#             if parts[0] == chrom and start >= bp1 and end <= bp2:
-#                 ratio = float(test/ref)
-#                 cum_ratio += ratio
-#                 cum_test += float(parts[3])
-#                 cum_ref += float(parts[4])
-#                 count += 1
-#         print(cum_test, count)
-#
-#         av_test = cum_test/count
-#         av_ref = cum_ref/count
-#
-#         average_ratio = av_test/av_ref
-#
-#         print(average_ratio, av_test, av_ref)
-#
-#         # allele_frequency = calculate_allele_freq(av_test, av_ref, purity, depth=True)
-#
-#         if average_ratio <= 1:
-#             allele_frequency = (1-average_ratio)
-#             print ("Deletion")
-#         else:
-#             allele_frequency = 1-(1/average_ratio)
-#             print ("Duplication")
-#         allele_frequency = "{:.2f}".format(allele_frequency)
-#
-#         print("* Allele frequency derived from read depth ratio = %s") % (allele_frequency)
-#         return(allele_frequency)
+    return(n_corr, t_corr)
 
 
 def hone_bps(bam_in, chrom, bp, bp_class):
@@ -277,7 +211,6 @@ def hone_bps(bam_in, chrom, bp, bp_class):
                     count += 1
                     bp_reads[i] = count
 
-
     try:
         maxValKey = max(bp_reads, key=bp_reads.get)
         read_count = bp_reads[maxValKey]
@@ -287,6 +220,7 @@ def hone_bps(bam_in, chrom, bp, bp_class):
         read_count = 0
 
     return(maxValKey, read_count)
+
 
 def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
     extender = slop * 2
@@ -322,6 +256,7 @@ def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
 
     return(sorted_bam)
 
+
 def cleanup(out_dir):
     print("Cleaning up old files in %s" % out_dir)
     out_dir = os.path.abspath(out_dir)
@@ -333,6 +268,7 @@ def cleanup(out_dir):
             print("Can't remove %s" % abs_file)
             pass
     return(out_dir)
+
 
 def get_args():
     parser = OptionParser()
@@ -403,14 +339,6 @@ def get_args():
                     action="store_true",
                     help="Run on test data")
 
-
-    parser.add_option("-r", \
-                    "--ratio", \
-                    dest="ratio",
-                    action="store_true",
-                    help="Read depth ratio file " + \
-                         "Must be fmtd: chromosome\tstart\tratio")
-
     parser.add_option("-c", \
                     "--config", \
                     dest="config",
@@ -451,7 +379,6 @@ def worker(options):
     purity   = float(options.purity)
     find_bps = options.find_bps
     test     = options.test
-    ratio    = options.ratio
     variants_out = options.variants_out
     guess = options.guess
 
@@ -461,7 +388,7 @@ def worker(options):
     slop = int(slop)
 
     if debug:
-        print_options(bam_in, ratio, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir)
+        print_options(bam_in, normal, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir)
 
     out_dir = cleanup(out_dir)
 
@@ -497,34 +424,11 @@ def worker(options):
 
     print(bp1_best_guess, bp2_best_guess)
 
-    if ratio and normal:
+    if normal:
         print("* Calculating allele frequency from read depth file: %s" % bam_in)
-        chromosomes = ['2L', '2R', '3L', '3R', '4', 'X', 'Y']
-        t_reads_by_chrom, tumour_mapped = count_reads(bam_in, chromosomes)
-        t_read_count = region_depth(bam_in, chrom, bp1, bp2)
-        n_reads_by_chrom, normal_mapped = count_reads(normal, chromosomes)
-        n_read_count = region_depth(normal, chrom, bp1, bp2)
-        normalised_count = int(math.sqrt(t_read_count * n_read_count))
-        mapped_ratio = tumour_mapped/normal_mapped
-
-        print("Tumour raw: %s" % t_read_count)
-        print("Normal raw: %s" % n_read_count)
-        raw_ratio = round(t_read_count/n_read_count, 2)
-        print("Unadj ratio: %s" % raw_ratio)
-
-        if raw_ratio < 1:
-            t_corr = t_read_count
-            n_corr = round(n_read_count * mapped_ratio)
-        else:
-            t_corr = round(t_read_count * mapped_ratio)
-            n_corr = n_read_count
-
-        print("Tumour normalised: %s" % t_corr)
-        print("Normal normalised: %s" % n_corr)
-
-        adj_ratio = round(t_corr/n_corr,2)
-        print("Norm ratio: %s" % adj_ratio)
-        allele_frequency = 0.9
+        opposing, supporting = get_depth(bam_in, normal, chrom, bp1, bp2)
+        pur_obj = Purity(opposing, supporting, purity)
+        allele_frequency = pur_obj.get_af()
 
         return(chrom, bp1, bp2, allele_frequency)
     else:
@@ -558,7 +462,9 @@ def worker(options):
         print("* Found %s reads in support of variant" % total_support)
         print("* Found %s reads opposing variant" % total_oppose)
 
-        allele_frequency = calculate_allele_freq(total_support, total_oppose, purity, depth=False)
+        allele_frequency = calculate_allele_freq(total_support, total_oppose, purity)
+        pur_obj = Purity(total_oppose, total_support, purity)
+        allele_frequency = pur_obj.get_af()
         return(chrom, bp1, bp2, allele_frequency)
 
 
