@@ -1,6 +1,0 @@
-{
-  "svSupport/test/test_deletions.py::Allele_frequency::test_allele_frequency": true, 
-  "svSupport/test/test_deletions.py::Breakpoint_reads::test_bp2_read_count": true, 
-  "svSupport/test/test_deletions.py::Breakpoint_reads::test_bp2_read_names": true, 
-  "svSupport/test/test_deletions.py::Opposing_reads::test_bp2_opposing_read_names": true
-}
