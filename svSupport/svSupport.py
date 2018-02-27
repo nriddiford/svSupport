@@ -7,7 +7,7 @@ import pandas as pd
 from collections import defaultdict
 from optparse import OptionParser
 from find_reads import FindReads
-from merge_bams import merge_bams
+from merge_bams import merge_bams, sort_bam
 import ntpath
 from count_reads import count_reads, region_depth
 
@@ -304,28 +304,27 @@ def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
             bp2_region.write(read)
 
     bps_bam = os.path.join(out_dir, "bp_regs" + ".bam")
-    merge_bams(bps_bam, out_dir, [bp1_bam, bp2_bam])
+    regions = merge_bams(bps_bam, out_dir, [bp1_bam, bp2_bam])
 
+    samfile = pysam.Samfile(regions, "rb")
     dups_rem = os.path.join(out_dir, "bp_regions" + ".bam")
-    print(dups_rem)
 
     with pysam.AlignmentFile(dups_rem, "wb", template=samfile) as out:
-        for read in samfile.fetch(chrom, bp1-extender, bp2+extender):
+        for read in samfile.fetch():
             if read.is_duplicate:
                 continue
             out.write(read)
 
-    head, file_name = ntpath.split(dups_rem)
-    de_duped_bam = os.path.splitext(file_name)[0]
+    os.remove(os.path.join(out_dir, 'bp_regs' + '.s.bam'))
+    os.remove(os.path.join(out_dir, 'bp_regs' + '.s.bam.bai'))
 
-    sorted_bam = os.path.join(out_dir, de_duped_bam + ".s" + ".bam")
-    pysam.sort("-o", sorted_bam, dups_rem)
-    pysam.index(sorted_bam)
+    sorted_bam = sort_bam(out_dir, dups_rem)
 
     return(sorted_bam)
 
 def cleanup(out_dir):
     print("Cleaning up old files in %s" % out_dir)
+    out_dir = os.path.abspath(out_dir)
     for f in os.listdir(out_dir):
         try:
             abs_file = os.path.join(out_dir, f)
@@ -333,6 +332,7 @@ def cleanup(out_dir):
         except OSError:
             print("Can't remove %s" % abs_file)
             pass
+    return(out_dir)
 
 def get_args():
     parser = OptionParser()
@@ -463,7 +463,7 @@ def worker(options):
     if debug:
         print_options(bam_in, ratio, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir)
 
-    cleanup(out_dir)
+    out_dir = cleanup(out_dir)
 
     if options.config:
         print("python svSupport.py -i %s -r %s -l %s:%s-%s -s %s -p %s -f %s -o %s -v %s") % (bam_in, chrom, bp1, bp2, slop, purity, find_bps, out_dir, variants_out)
