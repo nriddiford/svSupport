@@ -462,7 +462,7 @@ def worker(options):
         print("* Found %s reads in support of variant" % total_support)
         print("* Found %s reads opposing variant" % total_oppose)
 
-        allele_frequency = calculate_allele_freq(total_support, total_oppose, purity)
+        # allele_frequency = calculate_allele_freq(total_support, total_oppose, purity)
         pur_obj = Purity(total_oppose, total_support, purity)
         allele_frequency = pur_obj.get_af()
         return(chrom, bp1, bp2, allele_frequency)

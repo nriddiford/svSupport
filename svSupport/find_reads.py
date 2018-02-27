@@ -114,9 +114,6 @@ class FindReads(object):
 
                 # type II inversion - ('bp1_R', 'bp2_R')
                 elif self.bp1_class == 'bp1_R' and self.bp2_class == 'bp2_R':
-                    if read.query_name == 'DB9GZKS1:373:HGFF5BCXX:1:2214:11868:93874':
-                        print("Read start == %s" % read_start)
-                        print("Bp1 == %s " % self.bp1)
 
                     if read.reference_name != mate.reference_name:
                         continue
@@ -126,7 +123,6 @@ class FindReads(object):
 
                     # change 13.2.18 - need to sort out 0/1 based start - this works for type II...
                     elif read_start == self.bp1 and re.findall(r'(\d+)[S|H]', read.cigarstring):
-                        print("read")
                         self.print_and_write_bp1(read, mate, bp1_supporting_reads, supporting_reads, 'clipped_read', 'supporting', read_end_pos, mate_end_pos)
 
                     # opposing
