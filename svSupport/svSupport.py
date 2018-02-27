@@ -7,8 +7,10 @@ import pandas as pd
 from collections import defaultdict
 from optparse import OptionParser
 from find_reads import FindReads
-from merge_bams import merge_bams
+from tumour_purity import Purity
+from merge_bams import merge_bams, sort_bam
 import ntpath
+from count_reads import count_reads, region_depth
 
 def parse_config(options):
     print
@@ -66,14 +68,14 @@ def calculate_allele_freq(total_support, total_oppose, tumour_purity):
     return(adj_allele_frequency)
 
 
-def make_dirs(bam_file, out_dir):
+def make_dirs(out_dir):
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
 
-def print_options(bam_in, ratio_file, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir):
-    options = ['Bam file', 'Read depth ratio file', 'Chrom', 'bp1', 'bp2', 'slop', 'hone_bps', 'debug', 'test', 'Out dir']
-    args = [bam_in, ratio_file, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir]
+def print_options(bam_in, ratio, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir):
+    options = ['Bam file', 'ratio', 'Chrom', 'bp1', 'bp2', 'slop', 'hone_bps', 'debug', 'test', 'Out dir']
+    args = [bam_in, ratio, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir]
     print("Running with options:")
     print("--------")
     for index, (value1, value2) in enumerate(zip(options, args)):
@@ -87,13 +89,16 @@ def F_bp(read, bp):
     if not read.is_proper_pair and (not read.is_reverse and read.reference_start + read.reference_length <= bp):
         return True
 
+
 def bp_R(read, bp):
     if not read.is_proper_pair and (read.is_reverse and read.reference_start >= bp):
         return True
 
+
 def bp_F(read, bp):
     if not read.is_proper_pair and (not read.is_reverse and read.reference_start >= bp):
         return True
+
 
 def guess_type(bamFile, chrom, bp, bp_number, out_dir, debug):
     samfile = pysam.Samfile(bamFile, "rb")
@@ -122,7 +127,6 @@ def guess_type(bamFile, chrom, bp, bp_number, out_dir, debug):
                 elif re.findall(r'(\d+)[S|H].*?M', read.cigarstring):
                     # print("Read clipped to left: %s") % (read.cigarstring)
                     if bp_number == 'bp2':
-
                         sv_reads['bp2_R'] += 1
                         bpReads.write(read)
                     else:
@@ -156,30 +160,31 @@ def guess_type(bamFile, chrom, bp, bp_number, out_dir, debug):
     return(sv_reads, maxValKey)
 
 
-def get_depth(chrom, bp1, bp2, ratio_file):
-    count = 1
-    cum_ratio = 0
-    with open(ratio_file, 'r') as depth_ratios:
-        for l in depth_ratios:
-            parts = l.rstrip().split('\t')
-            if parts[0] == 'Chromosome':
-                continue
+def get_depth(bam_in, normal, chrom, bp1, bp2 ):
+    chromosomes = ['2L', '2R', '3L', '3R', '4', 'X', 'Y']
+    t_reads_by_chrom, tumour_mapped = count_reads(bam_in, chromosomes)
+    t_read_count = region_depth(bam_in, chrom, bp1, bp2)
 
-            pos = int(parts[1])
-            ratio = float(parts[2])
+    n_reads_by_chrom, normal_mapped = count_reads(normal, chromosomes)
+    n_read_count = region_depth(normal, chrom, bp1, bp2)
 
-            if parts[0] == chrom and pos >= bp1 and pos <= bp2:
-                if ratio < 0:
-                    continue
-                cum_ratio += ratio
-                count += 1
+    mapped_ratio = tumour_mapped/normal_mapped
 
-        average_ratio = cum_ratio/count
-        allele_frequency = (1-average_ratio)
-        allele_frequency = "{:.2f}".format(allele_frequency)
+    raw_ratio = round(t_read_count/n_read_count, 2)
+    print("Calculating read count ratio in region: %s:%s-%s") % (chrom, bp1, bp2)
+    print("Unadjusted read count ratio: %s") % (raw_ratio)
 
-        print("* Allele frequency derived from read depth ratio = %s") % (allele_frequency)
-        return(allele_frequency)
+    if raw_ratio < 1:
+        t_corr = t_read_count
+        n_corr = round(n_read_count * mapped_ratio)
+    else:
+        t_corr = round(t_read_count * mapped_ratio)
+        n_corr = n_read_count
+
+    adj_ratio = round(t_corr/n_corr,2)
+    print("Normalised read count ratio: %s") % (adj_ratio)
+
+    return(n_corr, t_corr)
 
 
 def hone_bps(bam_in, chrom, bp, bp_class):
@@ -206,7 +211,6 @@ def hone_bps(bam_in, chrom, bp, bp_class):
                     count += 1
                     bp_reads[i] = count
 
-
     try:
         maxValKey = max(bp_reads, key=bp_reads.get)
         read_count = bp_reads[maxValKey]
@@ -216,6 +220,7 @@ def hone_bps(bam_in, chrom, bp, bp_class):
         read_count = 0
 
     return(maxValKey, read_count)
+
 
 def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
     extender = slop * 2
@@ -233,28 +238,28 @@ def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
             bp2_region.write(read)
 
     bps_bam = os.path.join(out_dir, "bp_regs" + ".bam")
-    merge_bams(bps_bam, out_dir, [bp1_bam, bp2_bam])
+    regions = merge_bams(bps_bam, out_dir, [bp1_bam, bp2_bam])
 
+    samfile = pysam.Samfile(regions, "rb")
     dups_rem = os.path.join(out_dir, "bp_regions" + ".bam")
-    print(dups_rem)
 
     with pysam.AlignmentFile(dups_rem, "wb", template=samfile) as out:
-        for read in samfile.fetch(chrom, bp1-extender, bp2+extender):
+        for read in samfile.fetch():
             if read.is_duplicate:
                 continue
             out.write(read)
 
-    head, file_name = ntpath.split(dups_rem)
-    de_duped_bam = os.path.splitext(file_name)[0]
+    os.remove(os.path.join(out_dir, 'bp_regs' + '.s.bam'))
+    os.remove(os.path.join(out_dir, 'bp_regs' + '.s.bam.bai'))
 
-    sorted_bam = os.path.join(out_dir, de_duped_bam + ".s" + ".bam")
-    pysam.sort("-o", sorted_bam, dups_rem)
-    pysam.index(sorted_bam)
+    sorted_bam = sort_bam(out_dir, dups_rem)
 
     return(sorted_bam)
 
+
 def cleanup(out_dir):
     print("Cleaning up old files in %s" % out_dir)
+    out_dir = os.path.abspath(out_dir)
     for f in os.listdir(out_dir):
         try:
             abs_file = os.path.join(out_dir, f)
@@ -262,6 +267,8 @@ def cleanup(out_dir):
         except OSError:
             print("Can't remove %s" % abs_file)
             pass
+    return(out_dir)
+
 
 def get_args():
     parser = OptionParser()
@@ -271,8 +278,16 @@ def get_args():
                       dest="in_file",
                       action="store",
                       help="A sorted .bam file containing the reads " + \
-                         "supporting the structural variant calls", \
-                         metavar="FILE")
+                           "supporting the structural variant calls", \
+                           metavar="FILE")
+
+    parser.add_option("-n", \
+                    "--normal_bam", \
+                    dest="normal_bam",
+                    action="store",
+                     help="A sorted .bam file for the normal sample " + \
+                          "used for the calculating read depth", \
+                          metavar="FILE")
 
     parser.add_option("-s", \
                     "--slop", \
@@ -324,14 +339,6 @@ def get_args():
                     action="store_true",
                     help="Run on test data")
 
-
-    parser.add_option("-r", \
-                    "--ratio", \
-                    dest="ratio_file",
-                    action="store",
-                    help="Read depth ratio file " + \
-                         "Must be fmtd: chromosome\tstart\tratio")
-
     parser.add_option("-c", \
                     "--config", \
                     dest="config",
@@ -364,6 +371,7 @@ def get_args():
 
 def worker(options):
     bam_in   = options.in_file
+    normal   = options.normal_bam
     region   = options.region
     slop     = options.slop
     out_dir  = options.out_dir
@@ -371,7 +379,6 @@ def worker(options):
     purity   = float(options.purity)
     find_bps = options.find_bps
     test     = options.test
-    ratio_file = options.ratio_file
     variants_out = options.variants_out
     guess = options.guess
 
@@ -381,16 +388,12 @@ def worker(options):
     slop = int(slop)
 
     if debug:
-        print_options(bam_in, ratio_file, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir)
+        print_options(bam_in, normal, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir)
 
-
-    cleanup(out_dir)
+    out_dir = cleanup(out_dir)
 
     if options.config:
-        if ratio_file is not None:
-            print("python svSupport.py -i %s -r %s -l %s:%s-%s -s %s -p %s -f %s -o %s -v %s") % (bam_in, ratio_file, chrom, bp1, bp2, slop, purity, find_bps, out_dir, variants_out)
-        else:
-            print("python svSupport.py -i %s -l %s:%s-%s -s %s -p %s -f %s -o %s -v %s") % (bam_in, chrom, bp1, bp2, slop, purity, find_bps, out_dir, variants_out)
+        print("python svSupport.py -i %s -r %s -l %s:%s-%s -s %s -p %s -f %s -o %s -v %s") % (bam_in, chrom, bp1, bp2, slop, purity, find_bps, out_dir, variants_out)
 
     if guess:
         bp1_reads, bp1_best_guess = guess_type(bam_in, chrom, bp1, 'bp1', out_dir, debug)
@@ -421,9 +424,12 @@ def worker(options):
 
     print(bp1_best_guess, bp2_best_guess)
 
-    if ratio_file is not None and ratio_file != 'NA':
-        print("* Calculating allele frequency from read depth file: %s" % ratio_file)
-        allele_frequency = get_depth(chrom, bp1, bp2, ratio_file)
+    if normal:
+        print("* Calculating allele frequency from read depth file: %s" % bam_in)
+        opposing, supporting = get_depth(bam_in, normal, chrom, bp1, bp2)
+        pur_obj = Purity(opposing, supporting, purity)
+        allele_frequency = pur_obj.get_af()
+
         return(chrom, bp1, bp2, allele_frequency)
     else:
         if find_bps:
@@ -433,7 +439,7 @@ def worker(options):
             print("* Bp1 adjusted to: %s [%s split reads found]") % (bp1, bp1_count)
             print("* Bp2 adjusted to: %s [%s split reads found]") % (bp2, bp2_count)
 
-        make_dirs(bam_in, out_dir)
+        make_dirs(out_dir)
 
         bp_regions = get_regions(bam_in, chrom, bp1, bp2, out_dir, slop)
 
@@ -457,6 +463,8 @@ def worker(options):
         print("* Found %s reads opposing variant" % total_oppose)
 
         allele_frequency = calculate_allele_freq(total_support, total_oppose, purity)
+        pur_obj = Purity(total_oppose, total_support, purity)
+        allele_frequency = pur_obj.get_af()
         return(chrom, bp1, bp2, allele_frequency)
 
 
@@ -474,11 +482,12 @@ def main():
         print
 
         options.region = '3L:9892365-9894889'
-        options.out_dir = '../test_out'
-        options.in_file = '../data/test.bam'
+        options.out_dir = 'test/test_out'
+        make_dirs(options.out_dir)
+        options.in_file = 'test/data/test.bam'
         options.debug = True
 
-    if (options.in_file is not None and options.region is not None) or options.ratio_file is not None:
+    if options.in_file is not None and options.region is not None:
         try:
             chrom, bp1, bp2, allele_frequency = worker(options)
             return(chrom, bp1, bp2, allele_frequency)

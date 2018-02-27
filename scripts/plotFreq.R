@@ -30,9 +30,9 @@ slideTheme <- function(base_size = 25) {
   )
 }
 
-getFreqs <- function(infile = 'flat_vars.tsv'){
+getFreqs <- function(infile = 'variants_out.txt'){
   af_data <- read.delim(infile, header = F)
-  colnames(af_data) <- c("sample", "chrom", "bp1", "bp2", "allele_freq", "length", "bp1_feature", "bp2_feature", "genes")
+  colnames(af_data) <- c("sample", "chrom", "bp1", "bp2", "allele_freq", "type", "length", "bp1_feature", "bp2_feature", "genes")
   
 
   af_data<-suppressWarnings(separate(af_data, bp1_feature, c("bp1_gene", "bp1_feature"), sep = ", ", extra = "merge"))
@@ -41,13 +41,16 @@ getFreqs <- function(infile = 'flat_vars.tsv'){
   
   af_data <- select(af_data, "sample", "chrom", "allele_freq", "chrom", "bp1", "bp2", "hit")
   
+  af_data$allele_freq <- suppressWarnings(as.numeric(as.character(af_data$allele_freq)))
+  
+  
   af_data <- af_data %>%
     group_by(sample, hit) %>%
     mutate(count = seq(n())) %>%
     mutate(gene = ifelse(count == 1, as.character(hit), paste(hit, count, sep = "_"))) %>%
-    arrange(hit, -allele_freq)
+    transform(gene = reorder(gene, -allele_freq))
     
-  af_data <- transform(af_data, gene = reorder(gene, -allele_freq))
+  # af_data <- transform(af_data, gene = reorder(gene, -allele_freq))
   
   af_data$colour <- ifelse(af_data$chrom == 'X' | af_data$chrom == 'Y', "#199E41FE", "#2366A1FE")
   af_data$colour <- ifelse(af_data$bp1 >= 2700000 & af_data$bp2 <= 3500000 & af_data$chrom == "X", "#BD2A2AFE", af_data$colour)

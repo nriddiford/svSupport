@@ -5,36 +5,47 @@ import ntpath
 def merge_bams(out_file, out_dir, bams):
     s_bams = []
     for bam_file in bams:
-        try:
-            head, file_name = ntpath.split(bam_file)
-            sorted_bam = os.path.join(out_dir, file_name + ".s" + ".bam")
-            pysam.sort("-o", sorted_bam, bam_file)
-            os.remove(bam_file)
-            s_bams.append(sorted_bam)
-            pysam.index(sorted_bam)
-        except:
-            print("Can't sort %s" % bam_file)
+        sorted_bam = sort_bam(out_dir, bam_file)
+        s_bams.append(sorted_bam)
 
     in_files = ', '.join(s_bams)
     print("Merging bam files %s into '%s'") % (in_files, out_file)
     merge_parameters = ['-f', out_file] + s_bams
     pysam.merge(*merge_parameters)
 
-    head, file_name = ntpath.split(out_file)
-    merged_bam = os.path.splitext(file_name)[0]
+    sorted_bam = sort_bam(out_dir, out_file)
 
-    sorted_bam = os.path.join(out_dir, merged_bam + ".s" + ".bam")
-    pysam.sort("-o", sorted_bam, out_file)
-    pysam.index(out_file)
-
-    #Remove individual bp files
-    for bp_file in s_bams:
+    # Remove original bams
+    for sbam in s_bams:
         try:
-            abs_file = os.path.join(out_dir, bp_file)
-            os.remove(abs_file)
-            os.remove(abs_file + ".bai")
+            os.remove(sbam)
+            os.remove(sbam + ".bai")
         except OSError:
-            print("Couldn't remove %s" % abs_file)
+            print("Couldn't remove %s" % sbam)
             pass
 
     return(sorted_bam)
+
+def sort_bam(out_dir, bam):
+    head, file_name = ntpath.split(bam)
+    file_name = os.path.splitext(file_name)[0]
+    sorted_bam = os.path.join(out_dir, file_name + ".s" + ".bam")
+
+    try:
+        pysam.sort("-o", sorted_bam, bam)
+        index_bam(sorted_bam)
+    except:
+        print("Can't sort %s" % bam)
+
+    try:
+        os.remove(bam)
+    except:
+        print("Can't remove %s" % bam)
+
+    return(sorted_bam)
+
+def index_bam(bam):
+    try:
+        pysam.index(bam)
+    except:
+        print("Can't index %s" % bam)
