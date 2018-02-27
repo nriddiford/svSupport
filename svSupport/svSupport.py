@@ -9,8 +9,7 @@ from optparse import OptionParser
 from find_reads import FindReads
 from merge_bams import merge_bams
 import ntpath
-from count_reads import count_reads, region_depth, scale_factor
-import math
+from count_reads import count_reads, region_depth
 
 def parse_config(options):
     print
@@ -55,13 +54,6 @@ def parse_config(options):
 
 def calculate_allele_freq(total_support, total_oppose, tumour_purity, depth):
     print("* Tumour purity set to %s" % tumour_purity)
-    # if depth:
-    #     allele_frequency = (1-average_ratio)
-    #     print ("Deletion")
-    # else:
-    #     allele_frequency = 1-(1/average_ratio)
-    #     print ("Duplication")
-    
     allele_frequency = float( total_support/(total_support+total_oppose) )
     if tumour_purity == 1:
         adj_allele_frequency = allele_frequency
@@ -75,7 +67,7 @@ def calculate_allele_freq(total_support, total_oppose, tumour_purity, depth):
     return(adj_allele_frequency)
 
 
-def make_dirs(bam_file, out_dir):
+def make_dirs(out_dir):
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
@@ -505,38 +497,33 @@ def worker(options):
 
     print(bp1_best_guess, bp2_best_guess)
 
-    if ratio:
+    if ratio and normal:
         print("* Calculating allele frequency from read depth file: %s" % bam_in)
         chromosomes = ['2L', '2R', '3L', '3R', '4', 'X', 'Y']
         t_reads_by_chrom, tumour_mapped = count_reads(bam_in, chromosomes)
         t_read_count = region_depth(bam_in, chrom, bp1, bp2)
-        if normal:
-            n_reads_by_chrom, normal_mapped = count_reads(normal, chromosomes)
-            n_read_count = region_depth(normal, chrom, bp1, bp2)
-            normalised_count = int(math.sqrt(t_read_count * n_read_count))
-            mapped_ratio = tumour_mapped/normal_mapped
-            # scale_factor(tumour_mapped)
-            # scale_factor(normal_mapped)
+        n_reads_by_chrom, normal_mapped = count_reads(normal, chromosomes)
+        n_read_count = region_depth(normal, chrom, bp1, bp2)
+        normalised_count = int(math.sqrt(t_read_count * n_read_count))
+        mapped_ratio = tumour_mapped/normal_mapped
 
-            print("Tumour raw: %s" % t_read_count)
-            print("Normal raw: %s" % n_read_count)
-            raw_ratio = round(t_read_count/n_read_count, 2)
-            print("Unadj ratio: %s" % raw_ratio)
+        print("Tumour raw: %s" % t_read_count)
+        print("Normal raw: %s" % n_read_count)
+        raw_ratio = round(t_read_count/n_read_count, 2)
+        print("Unadj ratio: %s" % raw_ratio)
 
-            if raw_ratio < 1:
-                t_corr = t_read_count
-                n_corr = round(n_read_count * mapped_ratio)
-            else:
-                t_corr = round(t_read_count * mapped_ratio)
-                n_corr = n_read_count
+        if raw_ratio < 1:
+            t_corr = t_read_count
+            n_corr = round(n_read_count * mapped_ratio)
+        else:
+            t_corr = round(t_read_count * mapped_ratio)
+            n_corr = n_read_count
 
-            print("Tumour normalised: %s" % t_corr)
-            print("Normal normalised: %s" % n_corr)
+        print("Tumour normalised: %s" % t_corr)
+        print("Normal normalised: %s" % n_corr)
 
-            adj_ratio = round(t_corr/n_corr,2)
-            print("Norm ratio: %s" % adj_ratio)
-
-        # allele_frequency = get_depth(chrom, bp1, bp2, ratio_file, purity)
+        adj_ratio = round(t_corr/n_corr,2)
+        print("Norm ratio: %s" % adj_ratio)
         allele_frequency = 0.9
 
         return(chrom, bp1, bp2, allele_frequency)
@@ -548,7 +535,7 @@ def worker(options):
             print("* Bp1 adjusted to: %s [%s split reads found]") % (bp1, bp1_count)
             print("* Bp2 adjusted to: %s [%s split reads found]") % (bp2, bp2_count)
 
-        make_dirs(bam_in, out_dir)
+        make_dirs(out_dir)
 
         bp_regions = get_regions(bam_in, chrom, bp1, bp2, out_dir, slop)
 
@@ -589,8 +576,9 @@ def main():
         print
 
         options.region = '3L:9892365-9894889'
-        options.out_dir = '../test_out'
-        options.in_file = '../data/test.bam'
+        options.out_dir = 'test/test_out'
+        make_dirs(options.out_dir)
+        options.in_file = 'test/data/test.bam'
         options.debug = True
 
     if options.in_file is not None and options.region is not None:
