@@ -55,6 +55,14 @@ def parse_config(options):
 
 def calculate_allele_freq(total_support, total_oppose, tumour_purity):
     print("* Tumour purity set to %s" % tumour_purity)
+
+    # if depth:
+    #     allele_frequency = (1-average_ratio)
+    #     print ("Deletion")
+    # else:
+    #     allele_frequency = 1-(1/average_ratio)
+    #     print ("Duplication")
+
     allele_frequency = float( total_support/(total_support+total_oppose) )
     if tumour_purity == 1:
         adj_allele_frequency = allele_frequency
@@ -152,7 +160,6 @@ def guess_type(bamFile, chrom, bp, bp_number, out_dir, debug):
                     sv_reads['bp2_F'] += 1
                     bpReads.write(read)
 
-
     pysam.index(out_file)
     sv_reads['NA'] = 0
     maxValKey = max(sv_reads, key=sv_reads.get)
@@ -174,17 +181,20 @@ def get_depth(bam_in, normal, chrom, bp1, bp2 ):
     print("Calculating read count ratio in region: %s:%s-%s") % (chrom, bp1, bp2)
     print("Unadjusted read count ratio: %s") % (raw_ratio)
 
-    if raw_ratio < 1:
+    if mapped_ratio < 1:
         t_corr = t_read_count
         n_corr = round(n_read_count * mapped_ratio)
     else:
         t_corr = round(t_read_count * mapped_ratio)
         n_corr = n_read_count
 
+    print("Normalised tumour read count: %s" % t_corr)
+    print("Normalised normal read count: %s" % n_corr)
+
     adj_ratio = round(t_corr/n_corr,2)
     print("Normalised read count ratio: %s") % (adj_ratio)
 
-    return(n_corr, t_corr)
+    return(n_corr, t_corr, adj_ratio)
 
 
 def hone_bps(bam_in, chrom, bp, bp_class):
@@ -426,8 +436,9 @@ def worker(options):
 
     if normal:
         print("* Calculating allele frequency from read depth file: %s" % bam_in)
-        opposing, supporting = get_depth(bam_in, normal, chrom, bp1, bp2)
-        pur_obj = Purity(opposing, supporting, purity)
+        opposing, supporting, adj_ratio = get_depth(bam_in, normal, chrom, bp1, bp2)
+
+        pur_obj = Purity(opposing, supporting, purity, adj_ratio)
         allele_frequency = pur_obj.get_af()
 
         return(chrom, bp1, bp2, allele_frequency)
@@ -463,7 +474,7 @@ def worker(options):
         print("* Found %s reads opposing variant" % total_oppose)
 
         # allele_frequency = calculate_allele_freq(total_support, total_oppose, purity)
-        pur_obj = Purity(total_oppose, total_support, purity)
+        pur_obj = Purity(total_oppose, total_support, purity, read_depth_ratio=False)
         allele_frequency = pur_obj.get_af()
         return(chrom, bp1, bp2, allele_frequency)
 

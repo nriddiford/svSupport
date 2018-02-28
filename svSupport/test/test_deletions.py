@@ -88,7 +88,7 @@ class Allele_frequency(unittest.TestCase):
         total_support = bp1_support_count + bp2_support_count
         total_oppose = bp1_oppose_count + bp2_oppose_count
 
-        allele_frequency = calculate_allele_freq(total_support, total_oppose, 1, 1)
+        allele_frequency = calculate_allele_freq(total_support, total_oppose, 1)
         self.assertTrue(float(allele_frequency) == 0.27)
 
 
