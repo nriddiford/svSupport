@@ -7,23 +7,21 @@ from optparse import OptionParser
 
 import pysam
 import pandas as pd
-sys.dont_write_bytecode = True
 
 from find_reads import FindReads
 from calculate_allele_freq import Allele_frequency
 from merge_bams import merge_bams, sort_bam
 from count_reads import count_reads, region_depth
 from utils import *
+sys.dont_write_bytecode = True
 
 def parse_config(options):
-    print
-    print "Extracting arguments from config file: %s " % options.config
+    print("\nExtracting arguments from config file: %s\n" % options.config)
     try:
         os.remove(options.variants_out)
         print("Cleaning up old variants file '%s'" % options.variants_out)
     except OSError:
         pass
-    print
 
     out_file = options.variants_out
     af_out = open(out_file, 'w+')
@@ -361,8 +359,8 @@ def worker(options):
         print("* Calculating allele frequency from read depth file: %s" % bam_in)
         opposing, supporting, adj_ratio = get_depth(bam_in, normal, chrom, bp1, bp2)
 
-        pur_obj = Allele_frequency(opposing, supporting, purity, adj_ratio, chrom)
-        allele_frequency, adj_ratio = pur_obj.read_depth_af()
+        af = Allele_frequency(opposing, supporting, purity, chrom)
+        allele_frequency, adj_ratio = af.read_depth_af()
         classify_cnv(chrom, adj_ratio)
 
         return(chrom, bp1, bp2, allele_frequency)
@@ -398,8 +396,8 @@ def worker(options):
         print("* Found %s reads opposing variant" % total_oppose)
 
         # allele_frequency = calculate_allele_freq(total_support, total_oppose, purity)
-        pur_obj = Allele_frequency(total_oppose, total_support, purity, False, chrom)
-        allele_frequency = pur_obj.read_support_af()
+        af = Allele_frequency(total_oppose, total_support, purity, chrom)
+        allele_frequency = af.read_support_af()
         return(chrom, bp1, bp2, allele_frequency)
 
 

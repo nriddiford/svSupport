@@ -1,11 +1,9 @@
-# from svSupport.svSupport import classify_cnv
 
 class Allele_frequency(object):
-    def __init__(self, total_oppose, total_support, tumour_purity, read_depth_ratio, chrom):
+    def __init__(self, total_oppose, total_support, tumour_purity, chrom):
         self.total_oppose = total_oppose
         self.total_support = total_support
         self.tumour_purity = tumour_purity
-        self.read_depth_ratio = read_depth_ratio
         self.chrom = chrom
 
 
