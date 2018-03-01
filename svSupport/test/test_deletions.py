@@ -1,7 +1,7 @@
 import os, sys
 import unittest
 from svSupport.find_reads import FindReads
-from svSupport.calculate_allele_freq import Allele_frequency
+from svSupport.calculate_allele_freq import AlleleFrequency
 from svSupport.merge_bams import merge_bams
 
 root = os.path.dirname(os.path.abspath(__file__)) + "/data/"
@@ -64,7 +64,6 @@ class Opposing_reads(unittest.TestCase):
         """Are the correct number of bp1 opposing reads reported?"""
         self.assertTrue(self.bp2_oppose_count == 11)
 
-
     def test_bp2_opposing_read_names(self):
         """Are the correct bp1 supporting reads reported?"""
         bp2_true_opposing = ['HWI-D00405:129:C6KNAANXX:4:2214:19389:55608', 'HWI-D00405:129:C6KNAANXX:4:1213:10124:91137',
@@ -85,7 +84,7 @@ class Calc_freq(unittest.TestCase):
 
         total_support = bp1_support_count + bp2_support_count
         total_oppose = bp1_oppose_count + bp2_oppose_count
-        af = Allele_frequency(total_oppose, total_support, 1, chrom)
+        af = AlleleFrequency(total_oppose, total_support, 1, chrom)
         allele_frequency = af.read_support_af()
 
         self.assertTrue(float(allele_frequency) == 0.27)

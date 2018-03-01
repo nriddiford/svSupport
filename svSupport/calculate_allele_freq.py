@@ -1,5 +1,5 @@
 
-class Allele_frequency(object):
+class AlleleFrequency(object):
     def __init__(self, total_oppose, total_support, tumour_purity, chrom):
         self.total_oppose = total_oppose
         self.total_support = total_support
