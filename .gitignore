@@ -3,8 +3,6 @@ data/*
 out/*
 .cache/*
 svSupport/__pycache__/*
-!data/test*
 __pycache__/*
-test_out/*
+svSupport/test/test_out/*
 .pytest_cache/*
-test/test_out/*
