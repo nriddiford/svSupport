@@ -7,3 +7,4 @@ svSupport/__pycache__/*
 __pycache__/*
 test_out/*
 .pytest_cache/*
+test/test_out/*
