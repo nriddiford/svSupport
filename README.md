@@ -33,7 +33,7 @@ Options:
 ```
 
 ### Installation
-* Create environment
+* Create clean environment with [conda](https://conda.io/docs/)
 ```
 pip install conda
 conda create -n svSupport python==2.7.12
