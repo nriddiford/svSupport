@@ -1,20 +1,18 @@
 import os, sys
-sys.dont_write_bytecode = True
 import unittest
-from svSupport.svSupport import calculate_allele_freq
 from svSupport.find_reads import FindReads
+from svSupport.calculate_allele_freq import Allele_frequency
 from svSupport.merge_bams import merge_bams
 
 root = os.path.dirname(os.path.abspath(__file__)) + "/data/"
 bam_in = root + 'test.bam'
-print(bam_in)
 chrom = '3L'
 bp1 = 9892365
 bp2 = 9894889
 slop = 500
 out_dir = root + '../test_out/'
-debug=False
 bp1_best_guess, bp2_best_guess = 'F_bp1', 'bp2_R'
+debug=True
 
 reads = FindReads(bam_in, chrom, bp1, bp2, slop, out_dir, debug, bp1_best_guess, bp2_best_guess)
 
@@ -79,7 +77,7 @@ class Opposing_reads(unittest.TestCase):
         self.assertTrue(sorted(self.bp2_opposing_reads) == sorted(bp2_true_opposing))
 
 
-class Allele_frequency(unittest.TestCase):
+class Calc_freq(unittest.TestCase):
     """Test correct allele frequency is returned"""
     def test_allele_frequency(self):
         bp1_supporting_reads, bp1_support_count, bp1_support_bam, bp1_opposing_reads, bp1_oppose_count, bp1_oppose_bam = reads.bp1_reads()
@@ -87,10 +85,10 @@ class Allele_frequency(unittest.TestCase):
 
         total_support = bp1_support_count + bp2_support_count
         total_oppose = bp1_oppose_count + bp2_oppose_count
+        af = Allele_frequency(total_oppose, total_support, 1, chrom)
+        allele_frequency = af.read_support_af()
 
-        allele_frequency = calculate_allele_freq(total_support, total_oppose, 1)
         self.assertTrue(float(allele_frequency) == 0.27)
-
 
 if __name__ == '__main__':
     unittest.main()
