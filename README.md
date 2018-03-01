@@ -56,6 +56,5 @@ pip install .
 * bp2: 9894889
 * slop: 500
 * search_bps: 0
-* debug: True
-* test: True
-* Out dir: ../test_out
+* debug
+* Out dir: test/test_out

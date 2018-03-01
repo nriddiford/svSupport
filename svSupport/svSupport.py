@@ -311,7 +311,7 @@ def get_args():
     parser.set_defaults(slop=500, out_dir=out_path, purity=1, variants_out='variants_out.txt')
     options, args = parser.parse_args()
 
-    if (options.in_file is None or options.region is None) and options.test is False and options.config is None:
+    if (options.in_file is None or options.region is None) and not options.test and options.config is None:
       parser.print_help()
       print
 
@@ -405,11 +405,11 @@ def worker(options):
 def main():
     options, args = get_args()
 
-    if options.config is not None:
+    if options.config:
         parse_config(options)
         sys.exit()
 
-    elif options.test is True:
+    elif options.test:
         print
         print("* Running in test mode...")
         print
@@ -420,7 +420,7 @@ def main():
         options.debug = True
         options.guess = True
 
-    if options.in_file is not None and options.region is not None:
+    if options.in_file and options.region:
         try:
             chrom, bp1, bp2, allele_frequency = worker(options)
             return(chrom, bp1, bp2, allele_frequency)
