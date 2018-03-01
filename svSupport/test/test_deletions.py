@@ -16,7 +16,7 @@ debug=False
 
 reads = FindReads(bam_in, chrom, bp1, bp2, slop, out_dir, debug, bp1_best_guess, bp2_best_guess)
 
-class Breakpoint_reads(unittest.TestCase):
+class BreakpointReads(unittest.TestCase):
     """Test reads returned in support of breakpoints"""
     bp1_supporting_reads, bp1_support_count, bp1_support_bam, bp1_opposing_reads, bp1_oppose_count, bp1_oppose_bam = reads.bp1_reads()
     bp2_supporting_reads, bp2_support_count, bp2_support_bam, bp2_opposing_reads, bp2_oppose_count, bp2_oppose_bam = reads.bp2_reads(bp1_supporting_reads, bp1_opposing_reads)
@@ -42,7 +42,7 @@ class Breakpoint_reads(unittest.TestCase):
         self.assertTrue(sorted(self.bp2_supporting_reads) == sorted(bp2_true_support))
 
 
-class Opposing_reads(unittest.TestCase):
+class OpposingReads(unittest.TestCase):
     """Test reads returned that oppose breakpoints"""
     bp1_supporting_reads, bp1_support_count, bp1_support_bam, bp1_opposing_reads, bp1_oppose_count, bp1_oppose_bam = reads.bp1_reads()
     bp2_supporting_reads, bp2_support_count, bp2_support_bam, bp2_opposing_reads, bp2_oppose_count, bp2_oppose_bam = reads.bp2_reads(bp1_supporting_reads, bp1_opposing_reads)
@@ -76,7 +76,7 @@ class Opposing_reads(unittest.TestCase):
         self.assertTrue(sorted(self.bp2_opposing_reads) == sorted(bp2_true_opposing))
 
 
-class Calc_freq(unittest.TestCase):
+class CalcFreq(unittest.TestCase):
     """Test correct allele frequency is returned"""
     def test_allele_frequency(self):
         bp1_supporting_reads, bp1_support_count, bp1_support_bam, bp1_opposing_reads, bp1_oppose_count, bp1_oppose_bam = reads.bp1_reads()
