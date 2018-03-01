@@ -7,10 +7,11 @@ import pandas as pd
 from collections import defaultdict
 from optparse import OptionParser
 from find_reads import FindReads
-from tumour_purity import Purity
+from calculate_allele_freq import Allele_frequency
 from merge_bams import merge_bams, sort_bam
 import ntpath
 from count_reads import count_reads, region_depth
+from utils import *
 
 def parse_config(options):
     print
@@ -51,47 +52,6 @@ def parse_config(options):
         af_out.write('\t'.join(map(str, out_line)) + '\n')
 
     af_out.close()
-
-
-def calculate_allele_freq(total_support, total_oppose, tumour_purity):
-    print("* Tumour purity set to %s" % tumour_purity)
-
-    # if depth:
-    #     allele_frequency = (1-average_ratio)
-    #     print ("Deletion")
-    # else:
-    #     allele_frequency = 1-(1/average_ratio)
-    #     print ("Duplication")
-
-    allele_frequency = float( total_support/(total_support+total_oppose) )
-    if tumour_purity == 1:
-        adj_allele_frequency = allele_frequency
-    else:
-        adj_allele_frequency = float( total_support/( total_support + (total_oppose**tumour_purity) ) )
-
-    allele_frequency = "{:.2f}".format(allele_frequency)
-    adj_allele_frequency = "{:.2f}".format(adj_allele_frequency)
-    print("* Adjusted allele frequency from %s to %s") % (allele_frequency, adj_allele_frequency)
-    print
-    return(adj_allele_frequency)
-
-
-def make_dirs(out_dir):
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-
-
-def print_options(bam_in, ratio, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir):
-    options = ['Bam file', 'ratio', 'Chrom', 'bp1', 'bp2', 'slop', 'hone_bps', 'debug', 'test', 'Out dir']
-    args = [bam_in, ratio, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir]
-    print("Running with options:")
-    print("--------")
-    for index, (value1, value2) in enumerate(zip(options, args)):
-         print("o %s: %s") % (value1, value2)
-    print("--------")
-    print("python svSupport.py -i %s -l %s:%s-%s -s %s -f %s -t %s -d %d -o %s") % (bam_in, chrom, bp1, bp2, slop, find_bps, test, debug, out_dir )
-    print("--------")
-
 
 def F_bp(read, bp):
     if not read.is_proper_pair and (not read.is_reverse and read.reference_start + read.reference_length <= bp):
@@ -177,22 +137,16 @@ def get_depth(bam_in, normal, chrom, bp1, bp2 ):
 
     mapped_ratio = tumour_mapped/normal_mapped
 
-    raw_ratio = round(t_read_count/n_read_count, 2)
-    print("Calculating read count ratio in region: %s:%s-%s") % (chrom, bp1, bp2)
-    print("Unadjusted read count ratio: %s") % (raw_ratio)
-
     if mapped_ratio < 1:
         t_corr = t_read_count
-        n_corr = round(n_read_count * mapped_ratio)
+        n_corr = round((n_read_count * mapped_ratio))
     else:
-        t_corr = round(t_read_count * mapped_ratio)
+        t_corr = round((t_read_count * mapped_ratio))
         n_corr = n_read_count
 
-    print("Normalised tumour read count: %s" % t_corr)
-    print("Normalised normal read count: %s" % n_corr)
+    adj_ratio = round((t_corr/n_corr), 2)
 
-    adj_ratio = round(t_corr/n_corr,2)
-    print("Normalised read count ratio: %s") % (adj_ratio)
+    print("Normalised read count ratio: %s (%s/%s)") % (adj_ratio, t_corr, n_corr)
 
     return(n_corr, t_corr, adj_ratio)
 
@@ -265,20 +219,6 @@ def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
     sorted_bam = sort_bam(out_dir, dups_rem)
 
     return(sorted_bam)
-
-
-def cleanup(out_dir):
-    print("Cleaning up old files in %s" % out_dir)
-    out_dir = os.path.abspath(out_dir)
-    for f in os.listdir(out_dir):
-        try:
-            abs_file = os.path.join(out_dir, f)
-            os.remove(abs_file)
-        except OSError:
-            print("Can't remove %s" % abs_file)
-            pass
-    return(out_dir)
-
 
 def get_args():
     parser = OptionParser()
@@ -411,35 +351,17 @@ def worker(options):
         bp2_reads, bp2_best_guess = guess_type(bam_in, chrom, bp2, 'bp2', out_dir, debug)
         bp2_best_guess = max(bp2_reads, key=bp2_reads.get)
 
-        if bp1_best_guess == 'F_bp1' and bp2_best_guess == 'bp2_R':
-            print("Deletion")
-            print("__\ bp1 ... bp2 /__")
-        elif bp1_best_guess == 'F_bp1' and bp2_best_guess == 'F_bp2':
-            print("Inversion type I")
-            print("__\ bp1 ... __\ bp2")
-        elif bp1_best_guess == 'bp1_R' and bp2_best_guess == 'bp2_R':
-            print("Inversion type II")
-            print("bp1 /__ ... bp2 /__")
-        elif bp1_best_guess == 'bp1_R' and bp2_best_guess == 'F_bp2':
-            print("Tandem duplication")
-            print("bp1 /__ ... __\ bp2")
-            bp1_best_guess, bp2_best_guess = 'F_bp1', 'bp2_R'
-        else:
-            print("-> Can't predict sv type - assuming deletion")
-            print("__\ bp1 ... bp2 /__")
-            bp1_best_guess, bp2_best_guess = 'F_bp1', 'bp2_R'
-
-    else:
-        bp1_best_guess, bp2_best_guess = 'F_bp1', 'bp2_R'
-
-    print(bp1_best_guess, bp2_best_guess)
+        bp1_best_guess, bp2_best_guess, sv_type, read_sig = classify_sv(bp1_best_guess, bp2_best_guess, )
+        print("SV type : %s" % sv_type)
+        print("Read signature : %s" % read_sig)
 
     if normal:
         print("* Calculating allele frequency from read depth file: %s" % bam_in)
         opposing, supporting, adj_ratio = get_depth(bam_in, normal, chrom, bp1, bp2)
 
-        pur_obj = Purity(opposing, supporting, purity, adj_ratio)
-        allele_frequency = pur_obj.get_af()
+        pur_obj = Allele_frequency(opposing, supporting, purity, adj_ratio, chrom)
+        allele_frequency, adj_ratio = pur_obj.read_depth_af()
+        classify_cnv(chrom, adj_ratio)
 
         return(chrom, bp1, bp2, allele_frequency)
     else:
@@ -474,8 +396,8 @@ def worker(options):
         print("* Found %s reads opposing variant" % total_oppose)
 
         # allele_frequency = calculate_allele_freq(total_support, total_oppose, purity)
-        pur_obj = Purity(total_oppose, total_support, purity, read_depth_ratio=False)
-        allele_frequency = pur_obj.get_af()
+        pur_obj = Allele_frequency(total_oppose, total_support, purity, False, chrom)
+        allele_frequency = pur_obj.read_support_af()
         return(chrom, bp1, bp2, allele_frequency)
 
 
