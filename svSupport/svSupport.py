@@ -418,9 +418,9 @@ def main():
 
         options.region = '3L:9892365-9894889'
         options.out_dir = 'test/test_out'
-        make_dirs(options.out_dir)
         options.in_file = 'test/data/test.bam'
         options.debug = True
+        options.guess = True
 
     if options.in_file is not None and options.region is not None:
         try:
