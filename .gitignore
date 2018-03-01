@@ -1,9 +1,8 @@
 *.pyc
 data/*
 out/*
-.cache/*
-svSupport/__pycache__/*
-__pycache__/*
-svSupport/test/test_out/**
-.pytest_cache/*
-.idea/*
+svSupport/__pycache__
+__pycache__/
+svSupport/test/test_out/*
+!.gitignore
+.*
