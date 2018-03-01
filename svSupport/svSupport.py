@@ -13,7 +13,6 @@ from calculate_allele_freq import Allele_frequency
 from merge_bams import merge_bams, sort_bam
 from count_reads import count_reads, region_depth
 from utils import *
-sys.dont_write_bytecode = True
 
 def parse_config(options):
     print("\nExtracting arguments from config file: %s\n" % options.config)

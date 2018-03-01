@@ -1,5 +1,4 @@
 import os, sys
-sys.dont_write_bytecode = True
 
 def classify_sv(bp1_best_guess, bp2_best_guess):
     if bp1_best_guess == 'F_bp1' and bp2_best_guess == 'bp2_R':
