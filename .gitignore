@@ -4,6 +4,5 @@ out/*
 svSupport/__pycache__
 __pycache__/
 svSupport/test/test_out/*
-test/test_out/*
 !.gitignore
 .*
