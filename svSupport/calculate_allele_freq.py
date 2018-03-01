@@ -26,7 +26,7 @@ class Allele_frequency(object):
 
         # print("Tumour purity set to %s" % p)
 
-        allele_frequency = round(float(total_support)/(float(total_support)+float(total_oppose)),2)
+        allele_frequency = round(float(total_support)/(float(total_support)+float(total_oppose)), 2)
         if p == 1:
             adj_allele_frequency = allele_frequency
         else:

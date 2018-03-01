@@ -83,8 +83,8 @@ def guess_type(bamFile, chrom, bp, bp_number, out_dir, debug):
 
         for read in samfile.fetch(chrom, start, stop):
 
-            if read.reference_start +1 == bp and re.findall(r'(\d+)[S|H]', read.cigarstring):
-                if re.findall(r'.*?M(\d+)[S|H]', read.cigarstring):
+            if bp == read.reference_start +1 and re.findall(r'(\d+)[S|H]', read.cigarstring):
+                if re.findall(r".*?M(\d+)[S|H]", read.cigarstring):
                     # print("Read clipped to right: %s") % (read.cigarstring)
                     if bp_number == 'bp1':
                         sv_reads['F_bp1'] += 1
@@ -398,6 +398,7 @@ def worker(options):
         # allele_frequency = calculate_allele_freq(total_support, total_oppose, purity)
         af = Allele_frequency(total_oppose, total_support, purity, chrom)
         allele_frequency = af.read_support_af()
+
         return(chrom, bp1, bp2, allele_frequency)
 
 

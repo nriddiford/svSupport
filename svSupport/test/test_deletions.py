@@ -12,7 +12,7 @@ bp2 = 9894889
 slop = 500
 out_dir = root + '../test_out/'
 bp1_best_guess, bp2_best_guess = 'F_bp1', 'bp2_R'
-debug=True
+debug=False
 
 reads = FindReads(bam_in, chrom, bp1, bp2, slop, out_dir, debug, bp1_best_guess, bp2_best_guess)
 
