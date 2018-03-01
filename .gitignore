@@ -6,4 +6,4 @@ svSupport/__pycache__/*
 __pycache__/*
 svSupport/test/test_out/**
 .pytest_cache/*
-.idea*
+.idea/*
