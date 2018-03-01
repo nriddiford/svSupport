@@ -1,21 +1,23 @@
 #!/usr/bin/env python
 from __future__ import division
 import os, re, sys
-sys.dont_write_bytecode = True
-import pysam
-import pandas as pd
+import ntpath
 from collections import defaultdict
 from optparse import OptionParser
+
+import pysam
+import pandas as pd
+sys.dont_write_bytecode = True
+
 from find_reads import FindReads
 from calculate_allele_freq import Allele_frequency
 from merge_bams import merge_bams, sort_bam
-import ntpath
 from count_reads import count_reads, region_depth
 from utils import *
 
 def parse_config(options):
     print
-    print("Extracting arguments from config file: %s " % options.config)
+    print "Extracting arguments from config file: %s " % options.config
     try:
         os.remove(options.variants_out)
         print("Cleaning up old variants file '%s'" % options.variants_out)
