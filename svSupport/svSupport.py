@@ -24,7 +24,7 @@ def parse_config(options):
 
     out_file = options.variants_out
     af_out = open(out_file, 'w+')
-    df=pd.read_csv(options.config,delimiter="\t")
+    df = pd.read_csv(options.config, delimiter="\t")
     df = df.where((pd.notnull(df)), None)
 
     seen_events = defaultdict(int)
@@ -39,7 +39,7 @@ def parse_config(options):
                 continue
 
         options.in_file = variant['bam']
-        options.region  = variant['locus']
+        options.region = variant['locus']
         options.purity = float(variant['purity'])
         options.ratio_file = variant['read_depth']
         options.find_bps = True
@@ -47,22 +47,23 @@ def parse_config(options):
             options.guess = True
 
         chrom, bp1, bp2, allele_frequency = worker(options)
-        out_line = [variant['sample'], chrom, bp1, bp2, allele_frequency, variant['type'], variant['length(Kb)'], variant['bp1_locus'], variant['bp2_locus'], variant['affected_genes']  ]
+        out_line = [variant['sample'], chrom, bp1, bp2, allele_frequency, variant['type'], variant['length(Kb)'], variant['bp1_locus'], variant['bp2_locus'], variant['affected_genes']]
         af_out.write('\t'.join(map(str, out_line)) + '\n')
 
     af_out.close()
 
-def F_bp(read, bp):
+
+def f_bp(read, bp):
     if not read.is_proper_pair and (not read.is_reverse and read.reference_start + read.reference_length <= bp):
         return True
 
 
-def bp_R(read, bp):
+def bp_r(read, bp):
     if not read.is_proper_pair and (read.is_reverse and read.reference_start >= bp):
         return True
 
 
-def bp_F(read, bp):
+def bp_f(read, bp):
     if not read.is_proper_pair and (not read.is_reverse and read.reference_start >= bp):
         return True
 
@@ -101,21 +102,21 @@ def guess_type(bamFile, chrom, bp, bp_number, out_dir, debug):
                         bpReads.write(read)
 
             elif bp_number == 'bp1':
-                if F_bp(read, bp):
+                if f_bp(read, bp):
                     sv_reads['F_bp1'] += 1
                     bpReads.write(read)
-                elif bp_R(read, bp):
+                elif bp_r(read, bp):
                     sv_reads['bp1_R'] += 1
                     bpReads.write(read)
 
             elif bp_number == 'bp2':
-                if bp_R(read, bp):
+                if bp_r(read, bp):
                     sv_reads['bp2_R'] += 1
                     bpReads.write(read)
-                elif F_bp(read, bp):
+                elif f_bp(read, bp):
                     sv_reads['F_bp2'] += 1
                     bpReads.write(read)
-                elif bp_F(read, bp):
+                elif bp_f(read, bp):
                     sv_reads['bp2_F'] += 1
                     bpReads.write(read)
 
