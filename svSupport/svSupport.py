@@ -343,7 +343,7 @@ def worker(options):
     out_dir = cleanup(out_dir)
 
     if options.config:
-        print("python svSupport.py -i %s -r %s -l %s:%s-%s -s %s -p %s -f %s -o %s -v %s") % (bam_in, chrom, bp1, bp2, slop, purity, find_bps, out_dir, variants_out)
+        print("python svSupport.py -i %s -n %s -l %s:%s-%s -s %s -p %s -f %s -o %s -v %s") % (bam_in, normal, chrom, bp1, bp2, slop, purity, find_bps, out_dir, variants_out)
 
     if guess:
         bp1_reads, bp1_best_guess = guess_type(bam_in, chrom, bp1, 'bp1', out_dir, debug)
