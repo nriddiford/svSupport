@@ -1,6 +1,4 @@
 *.pyc
-data/*
-out/*
 test/test_out/*
 svSupport/test/*
 svSupport/__pycache__
