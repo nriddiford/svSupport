@@ -19,6 +19,7 @@ def get_purity():
         sample_purity = {}
         for l in purity_file:
             parts = l.rstrip().split('\t')
+            print(parts)
             sample_purity[parts[0]] = parts[1]
     return(sample_purity)
 
