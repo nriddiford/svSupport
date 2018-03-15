@@ -1,3 +1,0 @@
-sample	bam	locus	purity	read_depth
-HUM-1	/Users/Nick_curie/Desktop/script_test/svSupport/data/HUM-1.tagged.filt.SC.RG.bam	X:4586393-4588700	0.6	NA
-HUM-1	/Users/Nick_curie/Desktop/script_test/svSupport/data/HUM-1.tagged.filt.SC.RG.bam	X:4586391-4588702	0.6	NA
