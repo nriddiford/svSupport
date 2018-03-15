@@ -41,7 +41,7 @@ def parse_config(options):
         options.in_file = variant['bam']
         options.region = variant['locus']
         options.purity = float(variant['purity'])
-        options.ratio_file = variant['read_depth']
+        options.normal_bam = variant['normal_bam']
         options.find_bps = True
         if variant['guess'] is not None:
             options.guess = True
@@ -312,7 +312,7 @@ def get_args():
     parser.set_defaults(slop=500, out_dir=out_path, purity=1, variants_out='variants_out.txt')
     options, args = parser.parse_args()
 
-    if (options.in_file is None or options.region is None) and not options.test and options.config is None:
+    if (options.in_file is None or options.region is None) and not options.test and not options.config:
       parser.print_help()
       print
 
