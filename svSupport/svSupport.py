@@ -354,6 +354,9 @@ def worker(options):
         bp1_best_guess, bp2_best_guess, sv_type, read_sig = classify_sv(bp1_best_guess, bp2_best_guess, )
         print("SV type : %s" % sv_type)
         print("Read signature : %s" % read_sig)
+    else:
+        bp1_best_guess = 'F_bp1'
+        bp2_best_guess = 'bp2_R'
 
     if normal:
         print("* Calculating allele frequency from read depth file: %s" % bam_in)
