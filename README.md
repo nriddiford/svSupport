@@ -48,7 +48,7 @@ pip install .
 
 ### Run on test data
 
-`python svSupport.py -t`
+`svSupport -t`
 
 * Bam file: ../data/test.bam
 * Chrom: 3L
