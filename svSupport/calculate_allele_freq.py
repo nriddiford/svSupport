@@ -34,7 +34,6 @@ class AlleleFrequency(object):
 
         adj_allele_frequency = round(adj_allele_frequency, 2)
 
-
         print("Unadjusted allele frequency = %s" % allele_frequency)
         print("Adjusted allele frequency = %s" % adj_allele_frequency)
         return(adj_allele_frequency)
