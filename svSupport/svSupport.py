@@ -14,6 +14,7 @@ from merge_bams import merge_bams, sort_bam
 from count_reads import count_reads, region_depth
 from utils import *
 
+
 def parse_config(options):
     print("\nExtracting arguments from config file: %s\n" % options.config)
     try:
@@ -47,7 +48,8 @@ def parse_config(options):
             options.guess = True
 
         chrom, bp1, bp2, allele_frequency = worker(options)
-        out_line = [variant['sample'], chrom, bp1, bp2, allele_frequency, variant['type'], variant['length(Kb)'], variant['bp1_locus'], variant['bp2_locus'], variant['affected_genes']]
+        out_line = [variant['sample'], chrom, bp1, bp2, allele_frequency, variant['type'], variant['length(Kb)'],
+                    variant['bp1_locus'], variant['bp2_locus'], variant['affected_genes']]
         af_out.write('\t'.join(map(str, out_line)) + '\n')
 
     af_out.close()
@@ -83,7 +85,7 @@ def guess_type(bamFile, chrom, bp, bp_number, out_dir, debug):
 
         for read in samfile.fetch(chrom, start, stop):
 
-            if bp == read.reference_start +1 and re.findall(r'(\d+)[S|H]', read.cigarstring):
+            if bp == read.reference_start + 1 and re.findall(r'(\d+)[S|H]', read.cigarstring):
                 if re.findall(r".*?M(\d+)[S|H]", read.cigarstring):
                     # print("Read clipped to right: %s") % (read.cigarstring)
                     if bp_number == 'bp1':
@@ -124,10 +126,10 @@ def guess_type(bamFile, chrom, bp, bp_number, out_dir, debug):
     sv_reads['NA'] = 0
     maxValKey = max(sv_reads, key=sv_reads.get)
 
-    return(sv_reads, maxValKey)
+    return (sv_reads, maxValKey)
 
 
-def get_depth(bam_in, normal, chrom, bp1, bp2 ):
+def get_depth(bam_in, normal, chrom, bp1, bp2):
     chromosomes = ['2L', '2R', '3L', '3R', '4', 'X', 'Y']
     t_reads_by_chrom, tumour_mapped = count_reads(bam_in, chromosomes)
     t_read_count = region_depth(bam_in, chrom, bp1, bp2)
@@ -135,7 +137,7 @@ def get_depth(bam_in, normal, chrom, bp1, bp2 ):
     n_reads_by_chrom, normal_mapped = count_reads(normal, chromosomes)
     n_read_count = region_depth(normal, chrom, bp1, bp2)
 
-    mapped_ratio = tumour_mapped/normal_mapped
+    mapped_ratio = tumour_mapped / normal_mapped
 
     if mapped_ratio < 1:
         t_corr = t_read_count
@@ -144,11 +146,11 @@ def get_depth(bam_in, normal, chrom, bp1, bp2 ):
         t_corr = round((t_read_count * mapped_ratio))
         n_corr = n_read_count
 
-    adj_ratio = round((t_corr/n_corr), 2)
+    adj_ratio = round((t_corr / n_corr), 2)
 
     print("Normalised read count ratio: %s (%s/%s)") % (adj_ratio, t_corr, n_corr)
 
-    return(n_corr, t_corr, adj_ratio)
+    return (n_corr, t_corr, adj_ratio)
 
 
 def hone_bps(bam_in, chrom, bp, bp_class):
@@ -161,8 +163,8 @@ def hone_bps(bam_in, chrom, bp, bp_class):
     for i in range(start, stop):
         count = 0
 
-        for read in samfile.fetch(chrom, i-1, i+1):
-            read_end_pos   = read.reference_start + read.alen
+        for read in samfile.fetch(chrom, i - 1, i + 1):
+            read_end_pos = read.reference_start + read.alen
             read_start_pos = read.reference_start
 
             if bp_class == 'F_bp1' or bp_class == 'F_bp2':
@@ -171,7 +173,7 @@ def hone_bps(bam_in, chrom, bp, bp_class):
                     bp_reads[i] = count
 
             elif bp_class == 'bp2_R' or bp_class == 'bp1_R':
-                if read.reference_start +1 == i:
+                if read.reference_start + 1 == i:
                     count += 1
                     bp_reads[i] = count
 
@@ -183,7 +185,7 @@ def hone_bps(bam_in, chrom, bp, bp_class):
         maxValKey = original_breakpoint
         read_count = 0
 
-    return(maxValKey, read_count)
+    return (maxValKey, read_count)
 
 
 def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
@@ -193,12 +195,12 @@ def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
     bp1_bam = os.path.join(out_dir, "bp1_region" + ".bam")
 
     with pysam.AlignmentFile(bp1_bam, "wb", template=samfile) as bp1_region:
-        for read in samfile.fetch(chrom, bp1-extender, bp1+extender):
+        for read in samfile.fetch(chrom, bp1 - extender, bp1 + extender):
             bp1_region.write(read)
 
     bp2_bam = os.path.join(out_dir, "bp2_region" + ".bam")
     with pysam.AlignmentFile(bp2_bam, "wb", template=samfile) as bp2_region:
-        for read in samfile.fetch(chrom, bp2-extender, bp2+extender):
+        for read in samfile.fetch(chrom, bp2 - extender, bp2 + extender):
             bp2_region.write(read)
 
     bps_bam = os.path.join(out_dir, "bp_regs" + ".bam")
@@ -218,7 +220,8 @@ def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
 
     sorted_bam = sort_bam(out_dir, dups_rem)
 
-    return(sorted_bam)
+    return (sorted_bam)
+
 
 def get_args():
     parser = OptionParser()
@@ -229,106 +232,107 @@ def get_args():
                       action="store",
                       help="A sorted .bam file containing the reads " + \
                            "supporting the structural variant calls", \
-                           metavar="FILE")
+                      metavar="FILE")
 
     parser.add_option("-n", \
-                    "--normal_bam", \
-                    dest="normal_bam",
-                    action="store",
-                     help="A sorted .bam file for the normal sample " + \
-                          "used for the calculating read depth", \
-                          metavar="FILE")
+                      "--normal_bam", \
+                      dest="normal_bam",
+                      action="store",
+                      help="A sorted .bam file for the normal sample " + \
+                           "used for calculating allele frequency based " + \
+                           "on read depth", \
+                      metavar="FILE")
 
     parser.add_option("-s", \
-                    "--slop", \
-                    dest="slop",
-                    action="store",
-                    type="int",
-                    help="Distance from breakpoint to look for reads " + \
-                         "[Default: 500]")
+                      "--slop", \
+                      dest="slop",
+                      action="store",
+                      type="int",
+                      help="Distance from breakpoint to look for reads " + \
+                           "[Default: 500]")
 
     parser.add_option("-p", \
-                     "--purity", \
-                     dest="purity",
-                     action="store",
-                     help="Tumour purity e.g. 0.75 " + \
-                          "[Default: True]")
+                      "--purity", \
+                      dest="purity",
+                      action="store",
+                      help="Tumour purity e.g. 0.75 " + \
+                           "[Default: 1]")
 
     parser.add_option("-f", \
-                     "--find_bps", \
-                     dest="find_bps",
-                     action="store_true",
-                     help="Look for bps if position not exact " + \
-                          "[Default: False]")
+                      "--find_bps", \
+                      dest="find_bps",
+                      action="store_true",
+                      help="Look for bps if position not exact " + \
+                           "[Default: False]")
 
     parser.add_option("-l", \
-                    "--loci", \
-                    dest="region",
-                    action="store",
-                    help="The chromosome and breakpoints for a " + \
-                         "structural variant in the format: " + \
-                         "'chrom:bp_1-bp_2'")
+                      "--loci", \
+                      dest="region",
+                      action="store",
+                      help="The chromosome and breakpoints for a " + \
+                           "structural variant in the format: " + \
+                           "'chrom:bp_1-bp_2'")
 
     parser.add_option("-o", \
-                    "--out_dir", \
-                    dest="out_dir",
-                    action="store",
-                    help="Directory to write output to " + \
-                         "[Default: '../out']")
+                      "--out_dir", \
+                      dest="out_dir",
+                      action="store",
+                      help="Directory to write output to " + \
+                           "[Default: '../out']")
 
     parser.add_option("-d", \
-                    "--debug", \
-                    dest="debug",
-                    action="store_true",
-                    help="Run in debug mode "  + \
-                         "[Default: False]")
+                      "--debug", \
+                      dest="debug",
+                      action="store_true",
+                      help="Run in debug mode " + \
+                           "[Default: False]")
 
     parser.add_option("-t", \
-                    "--test", \
-                    dest="test",
-                    action="store_true",
-                    help="Run on test data")
+                      "--test", \
+                      dest="test",
+                      action="store_true",
+                      help="Run on test data")
 
     parser.add_option("-c", \
-                    "--config", \
-                    dest="config",
-                    action="store",
-                    help="Config file for batch processing " + \
-                         "sample\tchromosome:bp1-bp2\tpurity\type")
+                      "--config", \
+                      dest="config",
+                      action="store",
+                      help="Config file for batch processing " + \
+                           "sample\tchromosome:bp1-bp2\tpurity\type")
 
     parser.add_option("-v", \
-                    "--variants", \
-                    dest="variants_out",
-                    action="store",
-                    help="File to write parsed values to " )
+                      "--variants", \
+                      dest="variants_out",
+                      action="store",
+                      help="File to write parsed values to ")
 
     parser.add_option("-g", \
-                    "--guess", \
-                    dest="guess",
-                    action="store_true",
-                    help="Guess type of SV for read searching" )
+                      "--guess", \
+                      dest="guess",
+                      action="store_true",
+                      help="Guess type of SV for read searching")
 
     out_path = os.path.abspath('../out')
     parser.set_defaults(slop=500, out_dir=out_path, purity=1, variants_out='variants_out.txt')
     options, args = parser.parse_args()
 
     if (options.in_file is None or options.region is None) and not options.test and not options.config:
-      parser.print_help()
-      print
+        parser.print_help()
+        print
 
-    return(options, args)
+    return (options, args)
 
 
 def worker(options):
-    bam_in   = options.in_file
-    normal   = options.normal_bam
-    region   = options.region
-    slop     = options.slop
-    out_dir  = options.out_dir
-    debug    = options.debug
-    purity   = float(options.purity)
+    bam_in = options.in_file
+    normal = options.normal_bam
+    region = options.region
+    slop = options.slop
+    out_dir = options.out_dir
+    debug = options.debug
+    purity = float(options.purity)
     find_bps = options.find_bps
-    test     = options.test
+    test = options.test
     variants_out = options.variants_out
     guess = options.guess
 
@@ -343,7 +347,8 @@ def worker(options):
     out_dir = cleanup(out_dir)
 
     if options.config:
-        print("python svSupport.py -i %s -n %s -l %s:%s-%s -s %s -p %s -f %s -o %s -v %s") % (bam_in, normal, chrom, bp1, bp2, slop, purity, find_bps, out_dir, variants_out)
+        print("python svSupport.py -i %s -n %s -l %s:%s-%s -s %s -p %s -f %s -o %s -v %s") % (
+        bam_in, normal, chrom, bp1, bp2, slop, purity, find_bps, out_dir, variants_out)
 
     if guess:
         bp1_reads, bp1_best_guess = guess_type(bam_in, chrom, bp1, 'bp1', out_dir, debug)
@@ -366,7 +371,7 @@ def worker(options):
         allele_frequency, adj_ratio = af.read_depth_af()
         classify_cnv(chrom, adj_ratio)
 
-        return(chrom, bp1, bp2, allele_frequency)
+        return (chrom, bp1, bp2, allele_frequency)
     else:
         if find_bps:
             bp1, bp1_count = hone_bps(bam_in, chrom, bp1, bp1_best_guess)
@@ -381,7 +386,8 @@ def worker(options):
 
         reads = FindReads(bp_regions, chrom, bp1, bp2, slop, out_dir, debug, bp1_best_guess, bp2_best_guess)
         bp1_supporting_reads, bp1_support_count, bp1_support_bam, bp1_opposing_reads, bp1_oppose_count, bp1_oppose_bam = reads.bp1_reads()
-        bp2_supporting_reads, bp2_support_count, bp2_support_bam, bp2_opposing_reads, bp2_oppose_count, bp2_oppose_bam = reads.bp2_reads(bp1_supporting_reads, bp1_opposing_reads)
+        bp2_supporting_reads, bp2_support_count, bp2_support_bam, bp2_opposing_reads, bp2_oppose_count, bp2_oppose_bam = reads.bp2_reads(
+            bp1_supporting_reads, bp1_opposing_reads)
 
         support_out = os.path.join(out_dir, "sv_support" + ".bam")
         oppose_out = os.path.join(out_dir, "sv_oppose" + ".bam")
@@ -402,7 +408,7 @@ def worker(options):
         af = AlleleFrequency(total_oppose, total_support, purity, chrom)
         allele_frequency = af.read_support_af()
 
-        return(chrom, bp1, bp2, allele_frequency)
+        return (chrom, bp1, bp2, allele_frequency)
 
 
 # @profile
@@ -427,10 +433,11 @@ def main():
     if options.in_file and options.region:
         try:
             chrom, bp1, bp2, allele_frequency = worker(options)
-            return(chrom, bp1, bp2, allele_frequency)
+            return (chrom, bp1, bp2, allele_frequency)
         except IOError as err:
             sys.stderr.write("IOError " + str(err) + "\n");
             return
+
 
 if __name__ == "__main__":
     sys.exit(main())
