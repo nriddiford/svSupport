@@ -17,42 +17,41 @@ from utils import *
 
 def parse_config(options):
     print("\nExtracting arguments from config file: %s\n" % options.config)
-    try:
-        os.remove(options.variants_out)
-        print("Cleaning up old variants file '%s'" % options.variants_out)
-    except OSError:
-        pass
 
-    out_file = options.variants_out
-    af_out = open(out_file, 'w+')
-    df = pd.read_csv(options.config, delimiter="\t")
-    df = df.where((pd.notnull(df)), None)
+    os.remove(options.variants_out)
 
-    seen_events = defaultdict(int)
+    # try:
+    #     os.remove(options.variants_out)
+    #     print("Cleaning up old variants file '%s'" % options.variants_out)
+    # except OSError:
+    #     pass
 
-    for index, variant in df.iterrows():
-        if variant['event']:
-            key = '_'.join([variant['sample'], str(variant['event'])])
-            seen_events[key] += 1
-
-            if seen_events[key] > 1:
-                print("Seen this event before: %s, %s") % (variant['sample'], str(variant['event']))
-                continue
-
-        options.in_file = variant['bam']
-        options.region = variant['locus']
-        options.purity = float(variant['purity'])
-        options.normal_bam = variant['normal_bam']
-        options.find_bps = True
-        if variant['guess'] is not None:
-            options.guess = True
-
-        chrom, bp1, bp2, allele_frequency = worker(options)
-        out_line = [variant['sample'], chrom, bp1, bp2, allele_frequency, variant['type'], variant['length(Kb)'],
-                    variant['bp1_locus'], variant['bp2_locus'], variant['affected_genes']]
-        af_out.write('\t'.join(map(str, out_line)) + '\n')
-
-    af_out.close()
+    # with open(options.variants_out, 'w+') as af_out:
+    #     df = pd.read_csv(options.config, delimiter="\t")
+    #     df = df.where((pd.notnull(df)), None)
+    #     seen_events = defaultdict(int)
+    #
+    #     for index, variant in df.iterrows():
+    #         if variant['event']:
+    #             key = '_'.join([variant['sample'], str(variant['event'])])
+    #             seen_events[key] += 1
+    #
+    #             if seen_events[key] > 1:
+    #                 print("Seen this event before: %s, %s") % (variant['sample'], str(variant['event']))
+    #                 continue
+    #
+    #         options.in_file = variant['bam']
+    #         options.region = variant['locus']
+    #         options.purity = float(variant['purity'])
+    #         options.normal_bam = variant['normal_bam']
+    #         options.find_bps = True
+    #         if variant['guess'] is not None:
+    #             options.guess = True
+    #
+    #         # chrom, bp1, bp2, allele_frequency = worker(options)
+    #         # out_line = [variant['sample'], chrom, bp1, bp2, allele_frequency, variant['type'], variant['length(Kb)'],
+    #         #             variant['bp1_locus'], variant['bp2_locus'], variant['affected_genes']]
+    #         # af_out.write('\t'.join(map(str, out_line)) + '\n')
 
 
 def f_bp(read, bp):
@@ -226,94 +225,98 @@ def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
 def get_args():
     parser = OptionParser()
 
-    parser.add_option("-i", \
-                      "--in_file", \
+    parser.add_option("-i",
+                      "--in_file",
                       dest="in_file",
                       action="store",
-                      help="A sorted .bam file containing the reads " + \
-                           "supporting the structural variant calls", \
+                      help="A sorted .bam file containing the reads " +
+                           "supporting the structural variant calls",
                       metavar="FILE")
 
-    parser.add_option("-n", \
-                      "--normal_bam", \
+    parser.add_option("-n",
+                      "--normal_bam",
                       dest="normal_bam",
                       action="store",
-                      help="A sorted .bam file for the normal sample " + \
-                           "used for calculating allele frequency based " + \
-                           "on read depth", \
+                      help="A sorted .bam file for the normal sample " +
+                           "used for calculating allele frequency based " +
+                           "on read depth",
                       metavar="FILE")
 
-    parser.add_option("-s", \
-                      "--slop", \
+    parser.add_option("-s",
+                      "--slop",
                       dest="slop",
                       action="store",
                       type="int",
-                      help="Distance from breakpoint to look for reads " + \
+                      help="Distance from breakpoint to look for reads " +
                            "[Default: 500]")
 
-    parser.add_option("-p", \
-                      "--purity", \
+    parser.add_option("-p",
+                      "--purity",
                       dest="purity",
                       action="store",
-                      help="Tumour purity e.g. 0.75 " + \
+                      help="Tumour purity e.g. 0.75 " +
                            "[Default: 1]")
 
-    parser.add_option("-f", \
-                      "--find_bps", \
+    parser.add_option("-f",
+                      "--find_bps",
                       dest="find_bps",
                       action="store_true",
-                      help="Look for bps if position not exact " + \
+                      help="Look for bps if position not exact " +
                            "[Default: False]")
 
-    parser.add_option("-l", \
-                      "--loci", \
+    parser.add_option("-l",
+                      "--loci",
                       dest="region",
                       action="store",
-                      help="The chromosome and breakpoints for a " + \
-                           "structural variant in the format: " + \
+                      help="The chromosome and breakpoints for a " +
+                           "structural variant in the format: " +
                            "'chrom:bp_1-bp_2'")
 
-    parser.add_option("-o", \
-                      "--out_dir", \
+    parser.add_option("-o",
+                      "--out_dir",
                       dest="out_dir",
                       action="store",
-                      help="Directory to write output to " + \
+                      help="Directory to write output to " +
                            "[Default: '../out']")
 
-    parser.add_option("-d", \
-                      "--debug", \
+    parser.add_option("-d",
+                      "--debug",
                       dest="debug",
                       action="store_true",
-                      help="Run in debug mode " + \
+                      help="Run in debug mode " +
                            "[Default: False]")
 
-    parser.add_option("-t", \
-                      "--test", \
+    parser.add_option("-t",
+                      "--test",
                       dest="test",
                       action="store_true",
                       help="Run on test data")
 
-    parser.add_option("-c", \
-                      "--config", \
+    parser.add_option("-c",
+                      "--config",
                       dest="config",
                       action="store",
-                      help="Config file for batch processing " + \
+                      help="Config file for batch processing " +
                            "sample\tchromosome:bp1-bp2\tpurity\type")
 
-    parser.add_option("-v", \
-                      "--variants", \
+    parser.add_option("-v",
+                      "--variants",
                       dest="variants_out",
                       action="store",
                       help="File to write parsed values to ")
 
-    parser.add_option("-g", \
-                      "--guess", \
+    parser.add_option("-g",
+                      "--guess",
                       dest="guess",
                       action="store_true",
                       help="Guess type of SV for read searching")
 
-    out_path = os.path.abspath('../out')
-    parser.set_defaults(slop=500, out_dir=out_path, purity=1, variants_out='variants_out.txt')
+    # out_path = os.path.abspath('../out')
+    parser.set_defaults(slop=500,
+                        out_dir='out',
+                        purity=1,
+                        variants_out='variants_out.txt')
+
     options, args = parser.parse_args()
 
     if (options.in_file is None or options.region is None) and not options.test and not options.config:
@@ -415,28 +418,30 @@ def worker(options):
 def main():
     options, args = get_args()
 
-    if options.config:
-        parse_config(options)
-        sys.exit()
 
-    elif options.test:
-        print
-        print("* Running in test mode...")
-        print
 
-        options.region = '3L:9892365-9894889'
-        options.out_dir = 'test/test_out'
-        options.in_file = 'test/data/test.bam'
-        options.debug = True
-        options.guess = True
-
-    if options.in_file and options.region:
-        try:
-            chrom, bp1, bp2, allele_frequency = worker(options)
-            return (chrom, bp1, bp2, allele_frequency)
-        except IOError as err:
-            sys.stderr.write("IOError " + str(err) + "\n");
-            return
+    # if options.config:
+    #     parse_config(options)
+    #     sys.exit()
+    #
+    # elif options.test:
+    #     print
+    #     print("* Running in test mode...")
+    #     print
+    #
+    #     options.region = '3L:9892365-9894889'
+    #     options.out_dir = 'test/test_out'
+    #     options.in_file = 'test/data/test.bam'
+    #     options.debug = True
+    #     options.guess = True
+    #
+    # if options.in_file and options.region:
+    #     try:
+    #         chrom, bp1, bp2, allele_frequency = worker(options)
+    #         return (chrom, bp1, bp2, allele_frequency)
+    #     except IOError as err:
+    #         sys.stderr.write("IOError " + str(err) + "\n");
+    #         return
 
 
 if __name__ == "__main__":

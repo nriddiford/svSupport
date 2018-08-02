@@ -50,7 +50,7 @@ def make_dirs(out_dir):
 
 
 def cleanup(out_dir):
-    print("Cleaning up old files in %s" % out_dir)
+    print("Cleaning up old files in '%s'" % out_dir)
     out_dir = os.path.abspath(out_dir)
     for f in os.listdir(out_dir):
         try:
@@ -72,3 +72,7 @@ def print_options(bam_in, ratio, chrom, bp1, bp2, slop, find_bps, debug, test, o
     print("--------")
     print("python svSupport.py -i %s -l %s:%s-%s -s %s -f %s -t %s -d %d -o %s") % (bam_in, chrom, bp1, bp2, slop, find_bps, test, debug, out_dir )
     print("--------")
+
+
+def filterfn(read):
+    return (read.is_proper_pair and read.is_paired and read.tlen > 0 and not read.is_supplementary and not read.is_duplicate and not read.is_unmapped and not read.mate_is_unmapped)
