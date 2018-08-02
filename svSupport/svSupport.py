@@ -327,6 +327,7 @@ def get_args():
 
 
 def worker(options):
+    print " -> Running svSupport 1"
     bam_in = options.in_file
     normal = options.normal_bam
     region = options.region

@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 from __future__ import division
-import os, re, sys
-import ntpath
+import re, sys
 from collections import defaultdict
 from optparse import OptionParser
 
-import pysam
 import pandas as pd
 
 from find_reads import FindReads
@@ -72,6 +70,7 @@ def parse_config2(options):
 
 
 def worker(options):
+    print " -> Running svSupport 2"
     bam_in = options.in_file
     normal = options.normal_bam
     region = options.region
@@ -253,7 +252,6 @@ def get_depth(bam_in, normal, chrom, bp1, bp2):
         n_corr = n_read_count
 
     adj_ratio = round((t_corr / n_corr), 2)
-
     print("Normalised read count ratio: %s (%s/%s)") % (adj_ratio, t_corr, n_corr)
 
     return (n_corr, t_corr, adj_ratio)
@@ -295,7 +293,8 @@ def hone_bps(bam_in, chrom, bp, bp_class):
 
 
 def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
-    extender = slop * 2
+    # extender = slop * 2
+    extender = find_is_sd(bam_in, 10000)
 
     samfile = pysam.Samfile(bam_in, "rb")
     bp1_bam = os.path.join(out_dir, "bp1_region" + ".bam")
@@ -326,7 +325,7 @@ def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
 
     sorted_bam = sort_bam(out_dir, dups_rem)
 
-    return (sorted_bam)
+    return sorted_bam
 
 
 def get_args():
@@ -439,27 +438,26 @@ def main():
 
     if options.config:
         parse_config(options)
+        sys.exit()
 
-    #     sys.exit()
+    elif options.test:
+        print
+        print("* Running in test mode...")
+        print
 
-    # elif options.test:
-    #     print
-    #     print("* Running in test mode...")
-    #     print
-    #
-    #     options.region = '3L:9892365-9894889'
-    #     options.out_dir = 'test/test_out'
-    #     options.in_file = 'test/data/test.bam'
-    #     options.debug = True
-    #     options.guess = True
-    #
-    # if options.in_file and options.region:
-    #     try:
-    #         chrom, bp1, bp2, allele_frequency = worker(options)
-    #         return (chrom, bp1, bp2, allele_frequency)
-    #     except IOError as err:
-    #         sys.stderr.write("IOError " + str(err) + "\n");
-    #         return
+        options.region = '3L:9892365-9894889'
+        options.out_dir = 'test/test_out'
+        options.in_file = 'test/data/test.bam'
+        options.debug = True
+        options.guess = True
+
+    if options.in_file and options.region:
+        try:
+            worker(options)
+            # return (chrom, bp1, bp2, allele_frequency)
+        except IOError as err:
+            sys.stderr.write("IOError " + str(err) + "\n");
+            return
 
 
 if __name__ == "__main__":

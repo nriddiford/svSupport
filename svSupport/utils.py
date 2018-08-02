@@ -1,4 +1,7 @@
-import os, sys
+import os
+import math
+from itertools import islice
+import pysam
 
 def classify_sv(bp1_best_guess, bp2_best_guess):
     if bp1_best_guess == 'F_bp1' and bp2_best_guess == 'bp2_R':
@@ -74,5 +77,19 @@ def print_options(bam_in, ratio, chrom, bp1, bp2, slop, find_bps, debug, test, o
     print("--------")
 
 
+
 def filterfn(read):
+    """"Filter reads to ensure only properly paired, high quality reads are counted"""
     return (read.is_proper_pair and read.is_paired and read.tlen > 0 and not read.is_supplementary and not read.is_duplicate and not read.is_unmapped and not read.mate_is_unmapped)
+
+
+def find_is_sd(bam_file, samplesize):
+    """"Get empirical insert size distribution and return mean + 5 * SD"""
+    bam = pysam.Samfile(bam_file, 'rb')
+    l = islice((read.tlen for read in bam if filterfn(read)), samplesize)
+    l = list(l)
+    assert len(l) == samplesize
+    mean = float(sum(l)) / len(l)
+    sdev = math.sqrt(float(sum([(x - mean) ** 2 for x in l])) / (len(l) - 1))
+    print('Using slop equal to 5 standard deviations from insert size mean: {:.0f}'.format(round(mean + 5 * sdev)))
+    return mean + 5 * sdev
