@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 from __future__ import division
-import os, re, sys
-import ntpath
+import re, sys, os
 from collections import defaultdict
 from optparse import OptionParser
 
-import pysam
 import pandas as pd
 
 from find_reads import FindReads
@@ -16,43 +14,153 @@ from utils import *
 
 
 def parse_config(options):
-    print("\nExtracting arguments from config file: %s\n" % options.config)
+    print("\nExtracting arguments from config file: %s" % options.config)
+    base_name = (os.path.splitext(options.config)[0])
+    if not options.variants_out:
+        sample = base_name.split('_')[0]
+        outfile = sample + '_svSupport.txt'
+        options.variants_out = outfile
 
-    os.remove(options.variants_out)
+    df = pd.read_csv(options.config, delimiter="\t")
+    df = df.where((pd.notnull(df)), None)
 
-    # try:
-    #     os.remove(options.variants_out)
-    #     print("Cleaning up old variants file '%s'" % options.variants_out)
-    # except OSError:
-    #     pass
+    for i in df.index:
+        options.in_file = df.loc[i, 'bam']
 
-    # with open(options.variants_out, 'w+') as af_out:
-    #     df = pd.read_csv(options.config, delimiter="\t")
-    #     df = df.where((pd.notnull(df)), None)
-    #     seen_events = defaultdict(int)
-    #
-    #     for index, variant in df.iterrows():
-    #         if variant['event']:
-    #             key = '_'.join([variant['sample'], str(variant['event'])])
-    #             seen_events[key] += 1
-    #
-    #             if seen_events[key] > 1:
-    #                 print("Seen this event before: %s, %s") % (variant['sample'], str(variant['event']))
-    #                 continue
-    #
-    #         options.in_file = variant['bam']
-    #         options.region = variant['locus']
-    #         options.purity = float(variant['purity'])
-    #         options.normal_bam = variant['normal_bam']
-    #         options.find_bps = True
-    #         if variant['guess'] is not None:
-    #             options.guess = True
-    #
-    #         # chrom, bp1, bp2, allele_frequency = worker(options)
-    #         # out_line = [variant['sample'], chrom, bp1, bp2, allele_frequency, variant['type'], variant['length(Kb)'],
-    #         #             variant['bp1_locus'], variant['bp2_locus'], variant['affected_genes']]
-    #         # af_out.write('\t'.join(map(str, out_line)) + '\n')
+        options.region = df.loc[i, 'position']
+        options.purity = float(df.loc[i, 'tumour_purity'])
+        options.normal_bam = df.loc[i, 'normal_bam']
+        options.find_bps = True
+        options.guess = df.loc[i, 'guess']
 
+        # if df.loc[i, 'type'] in ['DEL', 'DUP']:
+        if df.loc[i, 'chromosome1'] == df.loc[i, 'chromosome2']:
+            chrom, bp1, bp2, allele_frequency = worker(options)
+        else:
+            chrom, bp1, bp2, allele_frequency = (0,0,0,0)
+
+        df.loc[i, 'alf2'] = allele_frequency
+        df.loc[i, 'bp1_c'] = bp1
+        df.loc[i, 'bp2_c'] = bp2
+
+    df = df.drop(['bam', 'normal_bam', 'tumour_purity', 'guess', 'sample'], axis=1)
+    df.to_csv(outfile, sep="\t", index=False)
+
+
+def parse_config2(options):
+    print("\nExtracting arguments from config file: %s" % options.config)
+
+    with open(options.config, 'r') as config, open(options.variants_out, 'w') as var_out:
+        for l in config:
+            parts = l.rstrip().split('\t')
+            if parts[0] == 'event':
+                outline = ['\t'.join(map(str, parts[:23])), 'newbp1', 'newbp2', 'af2']
+            elif parts[2] != 'DEL':
+                outline = ['\t'.join(map(str, parts[:23])), '-', '-', '-']
+            else:
+                bam = parts[24]
+                normal = parts[25]
+                purity = parts[26]
+                position = parts[12]
+
+                options.in_file = bam
+                options.region = position
+                options.purity = float(purity)
+                options.normal_bam = normal
+                options.find_bps = True
+                options.guess = True
+
+                chrom, bp1, bp2, allele_frequency = worker(options)
+                outline = ['\t'.join(map(str, parts[:23])), bp1, bp2, allele_frequency]
+            var_out.write('\t'.join(map(str, outline)) + '\n')
+
+
+def worker(options):
+    print " -> Running svSupport new"
+    bam_in = options.in_file
+    normal = options.normal_bam
+    region = options.region
+    out_dir = options.out_dir
+    debug = options.debug
+    purity = float(options.purity)
+    find_bps = options.find_bps
+    test = options.test
+    variants_out = options.variants_out
+    guess = options.guess
+
+    chrom, bp1, bp2 = re.split(':|-', region)
+    bp1 = int(bp1)
+    bp2 = int(bp2)
+
+    if debug:
+        print_options(bam_in, normal, chrom, bp1, bp2, find_bps, debug, test, out_dir)
+
+    if options.config:
+        print("python svSupport.py -i %s -n %s -l %s:%s-%s -p %s -f %s -o %s -v %s") % (
+        bam_in, normal, chrom, bp1, bp2, purity, find_bps, out_dir, variants_out)
+
+    if guess:
+        bp1_reads, bp1_best_guess = guess_type(bam_in, chrom, bp1, 'bp1', out_dir, debug)
+        bp1_best_guess = max(bp1_reads, key=bp1_reads.get)
+        bp2_reads, bp2_best_guess = guess_type(bam_in, chrom, bp2, 'bp2', out_dir, debug)
+        bp2_best_guess = max(bp2_reads, key=bp2_reads.get)
+
+        bp1_best_guess, bp2_best_guess, sv_type, read_sig = classify_sv(bp1_best_guess, bp2_best_guess, )
+        print("SV type : %s" % sv_type)
+        print("Read signature : %s" % read_sig)
+    else:
+        bp1_best_guess = 'F_bp1'
+        bp2_best_guess = 'bp2_R'
+
+    if normal:
+        print("* Calculating allele frequency from read depth file: %s" % bam_in)
+        opposing, supporting, adj_ratio = get_depth(bam_in, normal, chrom, bp1, bp2)
+
+        af = AlleleFrequency(opposing, supporting, purity, chrom)
+        allele_frequency, adj_ratio = af.read_depth_af()
+        classify_cnv(chrom, adj_ratio)
+
+        return (chrom, bp1, bp2, allele_frequency)
+    else:
+        if find_bps:
+            bp1, bp1_count = hone_bps(bam_in, chrom, bp1, bp1_best_guess)
+            bp2, bp2_count = hone_bps(bam_in, chrom, bp2, bp2_best_guess)
+
+            print("* Bp1 adjusted to: %s [%s split reads found]") % (bp1, bp1_count)
+            print("* Bp2 adjusted to: %s [%s split reads found]") % (bp2, bp2_count)
+
+        make_dirs(out_dir)
+
+        bp_regions, slop = get_regions(bam_in, chrom, bp1, bp2, out_dir)
+
+        reads = FindReads(bp_regions, chrom, bp1, bp2, slop, out_dir, debug, bp1_best_guess, bp2_best_guess)
+        bp1_supporting_reads, bp1_support_count, bp1_support_bam, bp1_opposing_reads, bp1_oppose_count, bp1_oppose_bam = reads.bp1_reads()
+        bp2_supporting_reads, bp2_support_count, bp2_support_bam, bp2_opposing_reads, bp2_oppose_count, bp2_oppose_bam = reads.bp2_reads(
+            bp1_supporting_reads, bp1_opposing_reads)
+
+        s = '_'.join(map(str, [chrom, bp1, bp2, 'sv_support'])) + '.bam'
+        o = '_'.join(map(str, [chrom, bp1, bp2, 'sv_oppose'])) + '.bam'
+
+        support_out = os.path.join(out_dir, s)
+        oppose_out = os.path.join(out_dir, o)
+
+        merge_bams(support_out, out_dir, [bp1_support_bam, bp2_support_bam])
+        merge_bams(oppose_out, out_dir, [bp1_oppose_bam, bp2_oppose_bam])
+
+        all_su_reads = bp1_supporting_reads + bp2_supporting_reads
+        total_support = len(set(all_su_reads))
+
+        all_op_reads = bp1_opposing_reads + bp2_opposing_reads
+        total_oppose = len(set(all_op_reads))
+
+        print("* Found %s reads in support of variant" % total_support)
+        print("* Found %s reads opposing variant" % total_oppose)
+
+        # allele_frequency = calculate_allele_freq(total_support, total_oppose, purity)
+        af = AlleleFrequency(total_oppose, total_support, purity, chrom)
+        allele_frequency = af.read_support_af()
+
+        return (chrom, bp1, bp2, allele_frequency)
 
 def f_bp(read, bp):
     if not read.is_proper_pair and (not read.is_reverse and read.reference_start + read.reference_length <= bp):
@@ -146,9 +254,7 @@ def get_depth(bam_in, normal, chrom, bp1, bp2):
         n_corr = n_read_count
 
     adj_ratio = round((t_corr / n_corr), 2)
-
     print("Normalised read count ratio: %s (%s/%s)") % (adj_ratio, t_corr, n_corr)
-
     return (n_corr, t_corr, adj_ratio)
 
 
@@ -187,8 +293,9 @@ def hone_bps(bam_in, chrom, bp, bp_class):
     return (maxValKey, read_count)
 
 
-def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
-    extender = slop * 2
+def get_regions(bam_in, chrom, bp1, bp2, out_dir):
+    # extender = slop * 2
+    extender = find_is_sd(bam_in, 10000)
 
     samfile = pysam.Samfile(bam_in, "rb")
     bp1_bam = os.path.join(out_dir, "bp1_region" + ".bam")
@@ -219,7 +326,7 @@ def get_regions(bam_in, chrom, bp1, bp2, out_dir, slop):
 
     sorted_bam = sort_bam(out_dir, dups_rem)
 
-    return (sorted_bam)
+    return sorted_bam, extender
 
 
 def get_args():
@@ -241,14 +348,6 @@ def get_args():
                            "used for calculating allele frequency based " +
                            "on read depth",
                       metavar="FILE")
-
-    parser.add_option("-s",
-                      "--slop",
-                      dest="slop",
-                      action="store",
-                      type="int",
-                      help="Distance from breakpoint to look for reads " +
-                           "[Default: 500]")
 
     parser.add_option("-p",
                       "--purity",
@@ -296,8 +395,7 @@ def get_args():
                       "--config",
                       dest="config",
                       action="store",
-                      help="Config file for batch processing " +
-                           "sample\tchromosome:bp1-bp2\tpurity\type")
+                      help="Config file for batch processing ")
 
     parser.add_option("-v",
                       "--variants",
@@ -312,10 +410,8 @@ def get_args():
                       help="Guess type of SV for read searching")
 
     # out_path = os.path.abspath('../out')
-    parser.set_defaults(slop=500,
-                        out_dir='out',
-                        purity=1,
-                        variants_out='variants_out.txt')
+    parser.set_defaults(out_dir='out',
+                        purity=1)
 
     options, args = parser.parse_args()
 
@@ -326,123 +422,33 @@ def get_args():
     return (options, args)
 
 
-def worker(options):
-    print " -> Running svSupport 1"
-    bam_in = options.in_file
-    normal = options.normal_bam
-    region = options.region
-    slop = options.slop
-    out_dir = options.out_dir
-    debug = options.debug
-    purity = float(options.purity)
-    find_bps = options.find_bps
-    test = options.test
-    variants_out = options.variants_out
-    guess = options.guess
-
-    chrom, bp1, bp2 = re.split(':|-', region)
-    bp1 = int(bp1)
-    bp2 = int(bp2)
-    slop = int(slop)
-
-    if debug:
-        print_options(bam_in, normal, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir)
-
-    out_dir = cleanup(out_dir)
-
-    if options.config:
-        print("python svSupport.py -i %s -n %s -l %s:%s-%s -s %s -p %s -f %s -o %s -v %s") % (
-        bam_in, normal, chrom, bp1, bp2, slop, purity, find_bps, out_dir, variants_out)
-
-    if guess:
-        bp1_reads, bp1_best_guess = guess_type(bam_in, chrom, bp1, 'bp1', out_dir, debug)
-        bp1_best_guess = max(bp1_reads, key=bp1_reads.get)
-        bp2_reads, bp2_best_guess = guess_type(bam_in, chrom, bp2, 'bp2', out_dir, debug)
-        bp2_best_guess = max(bp2_reads, key=bp2_reads.get)
-
-        bp1_best_guess, bp2_best_guess, sv_type, read_sig = classify_sv(bp1_best_guess, bp2_best_guess, )
-        print("SV type : %s" % sv_type)
-        print("Read signature : %s" % read_sig)
-    else:
-        bp1_best_guess = 'F_bp1'
-        bp2_best_guess = 'bp2_R'
-
-    if normal:
-        print("* Calculating allele frequency from read depth file: %s" % bam_in)
-        opposing, supporting, adj_ratio = get_depth(bam_in, normal, chrom, bp1, bp2)
-
-        af = AlleleFrequency(opposing, supporting, purity, chrom)
-        allele_frequency, adj_ratio = af.read_depth_af()
-        classify_cnv(chrom, adj_ratio)
-
-        return (chrom, bp1, bp2, allele_frequency)
-    else:
-        if find_bps:
-            bp1, bp1_count = hone_bps(bam_in, chrom, bp1, bp1_best_guess)
-            bp2, bp2_count = hone_bps(bam_in, chrom, bp2, bp2_best_guess)
-
-            print("* Bp1 adjusted to: %s [%s split reads found]") % (bp1, bp1_count)
-            print("* Bp2 adjusted to: %s [%s split reads found]") % (bp2, bp2_count)
-
-        make_dirs(out_dir)
-
-        bp_regions = get_regions(bam_in, chrom, bp1, bp2, out_dir, slop)
-
-        reads = FindReads(bp_regions, chrom, bp1, bp2, slop, out_dir, debug, bp1_best_guess, bp2_best_guess)
-        bp1_supporting_reads, bp1_support_count, bp1_support_bam, bp1_opposing_reads, bp1_oppose_count, bp1_oppose_bam = reads.bp1_reads()
-        bp2_supporting_reads, bp2_support_count, bp2_support_bam, bp2_opposing_reads, bp2_oppose_count, bp2_oppose_bam = reads.bp2_reads(
-            bp1_supporting_reads, bp1_opposing_reads)
-
-        support_out = os.path.join(out_dir, "sv_support" + ".bam")
-        oppose_out = os.path.join(out_dir, "sv_oppose" + ".bam")
-
-        merge_bams(support_out, out_dir, [bp1_support_bam, bp2_support_bam])
-        merge_bams(oppose_out, out_dir, [bp1_oppose_bam, bp2_oppose_bam])
-
-        all_su_reads = bp1_supporting_reads + bp2_supporting_reads
-        total_support = len(set(all_su_reads))
-
-        all_op_reads = bp1_opposing_reads + bp2_opposing_reads
-        total_oppose = len(set(all_op_reads))
-
-        print("* Found %s reads in support of variant" % total_support)
-        print("* Found %s reads opposing variant" % total_oppose)
-
-        # allele_frequency = calculate_allele_freq(total_support, total_oppose, purity)
-        af = AlleleFrequency(total_oppose, total_support, purity, chrom)
-        allele_frequency = af.read_support_af()
-
-        return (chrom, bp1, bp2, allele_frequency)
-
-
-# @profile
 def main():
     options, args = get_args()
+    make_dirs(options.out_dir)
 
+    if options.config:
+        cleanup(options.out_dir)
+        parse_config(options)
+        sys.exit()
 
+    elif options.test:
+        print
+        print("* Running in test mode...")
+        print
 
-    # if options.config:
-    #     parse_config(options)
-    #     sys.exit()
-    #
-    # elif options.test:
-    #     print
-    #     print("* Running in test mode...")
-    #     print
-    #
-    #     options.region = '3L:9892365-9894889'
-    #     options.out_dir = 'test/test_out'
-    #     options.in_file = 'test/data/test.bam'
-    #     options.debug = True
-    #     options.guess = True
-    #
-    # if options.in_file and options.region:
-    #     try:
-    #         chrom, bp1, bp2, allele_frequency = worker(options)
-    #         return (chrom, bp1, bp2, allele_frequency)
-    #     except IOError as err:
-    #         sys.stderr.write("IOError " + str(err) + "\n");
-    #         return
+        options.region = '3L:9892365-9894889'
+        options.out_dir = 'test/test_out'
+        options.in_file = 'test/data/test.bam'
+        options.debug = True
+        options.guess = True
+
+    if options.in_file and options.region:
+        try:
+            worker(options)
+            # return (chrom, bp1, bp2, allele_frequency)
+        except IOError as err:
+            sys.stderr.write("IOError " + str(err) + "\n");
+            return
 
 
 if __name__ == "__main__":
