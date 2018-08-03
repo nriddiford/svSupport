@@ -24,7 +24,7 @@ def merge_bams(out_file, out_dir, bams):
             print("Couldn't remove %s" % sbam)
             pass
 
-    return(sorted_bam)
+    return sorted_bam
 
 def sort_bam(out_dir, bam):
     head, file_name = ntpath.split(bam)
