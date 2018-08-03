@@ -65,15 +65,15 @@ def cleanup(out_dir):
     return(out_dir)
 
 
-def print_options(bam_in, ratio, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir):
-    options = ['Bam file', 'ratio', 'Chrom', 'bp1', 'bp2', 'slop', 'hone_bps', 'debug', 'test', 'Out dir']
-    args = [bam_in, ratio, chrom, bp1, bp2, slop, find_bps, debug, test, out_dir]
+def print_options(bam_in, ratio, chrom, bp1, bp2, find_bps, debug, test, out_dir):
+    options = ['Bam file', 'ratio', 'Chrom', 'bp1', 'bp2', 'hone_bps', 'debug', 'test', 'Out dir']
+    args = [bam_in, ratio, chrom, bp1, bp2, find_bps, debug, test, out_dir]
     print("Running with options:")
     print("--------")
     for index, (value1, value2) in enumerate(zip(options, args)):
          print("o %s: %s") % (value1, value2)
     print("--------")
-    print("python svSupport.py -i %s -l %s:%s-%s -s %s -f %s -t %s -d %d -o %s") % (bam_in, chrom, bp1, bp2, slop, find_bps, test, debug, out_dir )
+    print("python svSupport.py -i %s -l %s:%s-%s -f %s -t %s -d %d -o %s") % (bam_in, chrom, bp1, bp2, find_bps, test, debug, out_dir )
     print("--------")
 
 
