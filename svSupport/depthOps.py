@@ -1,6 +1,28 @@
 import pysam
 from collections import defaultdict
 
+def get_depth(bam_in, normal, chrom, bp1, bp2):
+    chromosomes = ['2L', '2R', '3L', '3R', '4', 'X', 'Y']
+    t_reads_by_chrom, tumour_mapped = count_reads(bam_in, chromosomes)
+    t_read_count = region_depth(bam_in, chrom, bp1, bp2)
+
+    n_reads_by_chrom, normal_mapped = count_reads(normal, chromosomes)
+    n_read_count = region_depth(normal, chrom, bp1, bp2)
+
+    mapped_ratio = tumour_mapped / normal_mapped
+
+    if mapped_ratio < 1:
+        t_corr = t_read_count
+        n_corr = round((n_read_count * mapped_ratio))
+    else:
+        t_corr = round((t_read_count * mapped_ratio))
+        n_corr = n_read_count
+
+    adj_ratio = round((t_corr / n_corr), 2)
+    print("Normalised read count ratio: %s (%s/%s)") % (adj_ratio, t_corr, n_corr)
+    return (n_corr, t_corr, adj_ratio)
+
+
 def count_reads(bamfile, chromosomes):
     """Count the total number of mapped reads in a BAM file, filtering
     the chromosome given in chroms_to_include list

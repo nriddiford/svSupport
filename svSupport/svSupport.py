@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 from __future__ import division
-import re, sys
-from optparse import OptionParser
+import sys
 
 import pandas as pd
 
 from find_reads import FindReads
 from calculate_allele_freq import AlleleFrequency
 from merge_bams import merge_bams, sort_bam
-from count_reads import count_reads, region_depth
+from depthOps import get_depth
+from getArgs import get_args
 from utils import *
 from guess_tpye import *
 
@@ -135,28 +135,6 @@ def worker(options):
         return (chrom, bp1, bp2, allele_frequency)
 
 
-def get_depth(bam_in, normal, chrom, bp1, bp2):
-    chromosomes = ['2L', '2R', '3L', '3R', '4', 'X', 'Y']
-    t_reads_by_chrom, tumour_mapped = count_reads(bam_in, chromosomes)
-    t_read_count = region_depth(bam_in, chrom, bp1, bp2)
-
-    n_reads_by_chrom, normal_mapped = count_reads(normal, chromosomes)
-    n_read_count = region_depth(normal, chrom, bp1, bp2)
-
-    mapped_ratio = tumour_mapped / normal_mapped
-
-    if mapped_ratio < 1:
-        t_corr = t_read_count
-        n_corr = round((n_read_count * mapped_ratio))
-    else:
-        t_corr = round((t_read_count * mapped_ratio))
-        n_corr = n_read_count
-
-    adj_ratio = round((t_corr / n_corr), 2)
-    print("Normalised read count ratio: %s (%s/%s)") % (adj_ratio, t_corr, n_corr)
-    return (n_corr, t_corr, adj_ratio)
-
-
 def hone_bps(bam_in, chrom, bp, bp_class):
     samfile = pysam.Samfile(bam_in, "rb")
     start = bp - 5
@@ -224,99 +202,6 @@ def get_regions(bam_in, chrom, bp1, bp2, out_dir):
     sorted_bam = sort_bam(out_dir, dups_rem)
 
     return sorted_bam, slop
-
-
-def get_args():
-    parser = OptionParser()
-
-    parser.add_option("-i",
-                      "--in_file",
-                      dest="in_file",
-                      action="store",
-                      help="A sorted .bam file containing the reads " +
-                           "supporting the structural variant calls",
-                      metavar="FILE")
-
-    parser.add_option("-n",
-                      "--normal_bam",
-                      dest="normal_bam",
-                      action="store",
-                      help="A sorted .bam file for the normal sample " +
-                           "used for calculating allele frequency based " +
-                           "on read depth",
-                      metavar="FILE")
-
-    parser.add_option("-p",
-                      "--purity",
-                      dest="purity",
-                      action="store",
-                      help="Tumour purity e.g. 0.75 " +
-                           "[Default: 1]")
-
-    parser.add_option("-f",
-                      "--find_bps",
-                      dest="find_bps",
-                      action="store_true",
-                      help="Look for bps if position not exact " +
-                           "[Default: False]")
-
-    parser.add_option("-l",
-                      "--loci",
-                      dest="region",
-                      action="store",
-                      help="The chromosome and breakpoints for a " +
-                           "structural variant in the format: " +
-                           "'chrom:bp_1-bp_2'")
-
-    parser.add_option("-o",
-                      "--out_dir",
-                      dest="out_dir",
-                      action="store",
-                      help="Directory to write output to " +
-                           "[Default: '../out']")
-
-    parser.add_option("-d",
-                      "--debug",
-                      dest="debug",
-                      action="store_true",
-                      help="Run in debug mode " +
-                           "[Default: False]")
-
-    parser.add_option("-t",
-                      "--test",
-                      dest="test",
-                      action="store_true",
-                      help="Run on test data")
-
-    parser.add_option("-c",
-                      "--config",
-                      dest="config",
-                      action="store",
-                      help="Config file for batch processing ")
-
-    parser.add_option("-v",
-                      "--variants",
-                      dest="variants_out",
-                      action="store",
-                      help="File to write parsed values to ")
-
-    parser.add_option("-g",
-                      "--guess",
-                      dest="guess",
-                      action="store_true",
-                      help="Guess type of SV for read searching")
-
-    # out_path = os.path.abspath('../out')
-    parser.set_defaults(out_dir='out',
-                        purity=1)
-
-    options, args = parser.parse_args()
-
-    if (options.in_file is None or options.region is None) and not options.test and not options.config:
-        parser.print_help()
-        print
-
-    return (options, args)
 
 
 def main():
