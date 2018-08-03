@@ -135,7 +135,7 @@ def get_args():
 
     options, args = parser.parse_args()
 
-    if (options.variants is None or options.sample is None or options.bam_dir is None):
+    if (options.variants is None or options.sample is None):
         parser.print_help()
         print
         sys.exit()
