@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 from __future__ import division
-import re, sys, os
-from collections import defaultdict
+import re, sys
 from optparse import OptionParser
 
 import pandas as pd
@@ -11,6 +10,7 @@ from calculate_allele_freq import AlleleFrequency
 from merge_bams import merge_bams, sort_bam
 from count_reads import count_reads, region_depth
 from utils import *
+from guess_tpye import *
 
 
 def parse_config(options):
@@ -47,34 +47,6 @@ def parse_config(options):
     df.to_csv(outfile, sep="\t", index=False)
 
 
-def parse_config2(options):
-    print("\nExtracting arguments from config file: %s" % options.config)
-
-    with open(options.config, 'r') as config, open(options.variants_out, 'w') as var_out:
-        for l in config:
-            parts = l.rstrip().split('\t')
-            if parts[0] == 'event':
-                outline = ['\t'.join(map(str, parts[:23])), 'newbp1', 'newbp2', 'af2']
-            elif parts[2] != 'DEL':
-                outline = ['\t'.join(map(str, parts[:23])), '-', '-', '-']
-            else:
-                bam = parts[24]
-                normal = parts[25]
-                purity = parts[26]
-                position = parts[12]
-
-                options.in_file = bam
-                options.region = position
-                options.purity = float(purity)
-                options.normal_bam = normal
-                options.find_bps = True
-                options.guess = True
-
-                chrom, bp1, bp2, allele_frequency = worker(options)
-                outline = ['\t'.join(map(str, parts[:23])), bp1, bp2, allele_frequency]
-            var_out.write('\t'.join(map(str, outline)) + '\n')
-
-
 def worker(options):
     print " -> Running svSupport new"
     bam_in = options.in_file
@@ -100,9 +72,9 @@ def worker(options):
         bam_in, normal, chrom, bp1, bp2, purity, find_bps, out_dir, variants_out)
 
     if guess:
-        bp1_reads, bp1_best_guess = guess_type(bam_in, chrom, bp1, 'bp1', out_dir, debug)
+        bp1_reads, bp1_best_guess = guess_type(chrom, bp1, 'bp1', options)
         bp1_best_guess = max(bp1_reads, key=bp1_reads.get)
-        bp2_reads, bp2_best_guess = guess_type(bam_in, chrom, bp2, 'bp2', out_dir, debug)
+        bp2_reads, bp2_best_guess = guess_type(chrom, bp2, 'bp2', options)
         bp2_best_guess = max(bp2_reads, key=bp2_reads.get)
 
         bp1_best_guess, bp2_best_guess, sv_type, read_sig = classify_sv(bp1_best_guess, bp2_best_guess, )
@@ -161,79 +133,6 @@ def worker(options):
         allele_frequency = af.read_support_af()
 
         return (chrom, bp1, bp2, allele_frequency)
-
-def f_bp(read, bp):
-    if not read.is_proper_pair and (not read.is_reverse and read.reference_start + read.reference_length <= bp):
-        return True
-
-
-def bp_r(read, bp):
-    if not read.is_proper_pair and (read.is_reverse and read.reference_start >= bp):
-        return True
-
-
-def bp_f(read, bp):
-    if not read.is_proper_pair and (not read.is_reverse and read.reference_start >= bp):
-        return True
-
-
-def guess_type(bamFile, chrom, bp, bp_number, out_dir, debug):
-    samfile = pysam.Samfile(bamFile, "rb")
-    start = bp - 200
-    stop = bp + 200
-
-    sv_reads = defaultdict(int)
-
-    print(bp, bp_number)
-    count = 0
-    out_file = os.path.join(out_dir, bp_number + "_classifying_reads" + ".bam")
-
-    with pysam.AlignmentFile(out_file, "wb", template=samfile) as bpReads:
-
-        for read in samfile.fetch(chrom, start, stop):
-
-            if bp == read.reference_start + 1 and re.findall(r'(\d+)[S|H]', read.cigarstring):
-                if re.findall(r".*?M(\d+)[S|H]", read.cigarstring):
-                    # print("Read clipped to right: %s") % (read.cigarstring)
-                    if bp_number == 'bp1':
-                        sv_reads['F_bp1'] += 1
-                        bpReads.write(read)
-                    else:
-                        sv_reads['F_bp2'] += 1
-                        bpReads.write(read)
-                elif re.findall(r'(\d+)[S|H].*?M', read.cigarstring):
-                    # print("Read clipped to left: %s") % (read.cigarstring)
-                    if bp_number == 'bp2':
-                        sv_reads['bp2_R'] += 1
-                        bpReads.write(read)
-                    else:
-                        sv_reads['bp1_R'] += 1
-                        bpReads.write(read)
-
-            elif bp_number == 'bp1':
-                if f_bp(read, bp):
-                    sv_reads['F_bp1'] += 1
-                    bpReads.write(read)
-                elif bp_r(read, bp):
-                    sv_reads['bp1_R'] += 1
-                    bpReads.write(read)
-
-            elif bp_number == 'bp2':
-                if bp_r(read, bp):
-                    sv_reads['bp2_R'] += 1
-                    bpReads.write(read)
-                elif f_bp(read, bp):
-                    sv_reads['F_bp2'] += 1
-                    bpReads.write(read)
-                elif bp_f(read, bp):
-                    sv_reads['bp2_F'] += 1
-                    bpReads.write(read)
-
-    pysam.index(out_file)
-    sv_reads['NA'] = 0
-    maxValKey = max(sv_reads, key=sv_reads.get)
-
-    return (sv_reads, maxValKey)
 
 
 def get_depth(bam_in, normal, chrom, bp1, bp2):
@@ -294,19 +193,17 @@ def hone_bps(bam_in, chrom, bp, bp_class):
 
 
 def get_regions(bam_in, chrom, bp1, bp2, out_dir):
-    # extender = slop * 2
-    extender = find_is_sd(bam_in, 10000)
-
+    slop = find_is_sd(bam_in, 10000)
     samfile = pysam.Samfile(bam_in, "rb")
     bp1_bam = os.path.join(out_dir, "bp1_region" + ".bam")
 
     with pysam.AlignmentFile(bp1_bam, "wb", template=samfile) as bp1_region:
-        for read in samfile.fetch(chrom, bp1 - extender, bp1 + extender):
+        for read in samfile.fetch(chrom, bp1 - slop, bp1 + slop):
             bp1_region.write(read)
 
     bp2_bam = os.path.join(out_dir, "bp2_region" + ".bam")
     with pysam.AlignmentFile(bp2_bam, "wb", template=samfile) as bp2_region:
-        for read in samfile.fetch(chrom, bp2 - extender, bp2 + extender):
+        for read in samfile.fetch(chrom, bp2 - slop, bp2 + slop):
             bp2_region.write(read)
 
     bps_bam = os.path.join(out_dir, "bp_regs" + ".bam")
@@ -326,7 +223,7 @@ def get_regions(bam_in, chrom, bp1, bp2, out_dir):
 
     sorted_bam = sort_bam(out_dir, dups_rem)
 
-    return sorted_bam, extender
+    return sorted_bam, slop
 
 
 def get_args():
