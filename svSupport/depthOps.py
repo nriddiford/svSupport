@@ -2,6 +2,7 @@ import pysam
 from collections import defaultdict
 import math
 
+
 def get_depth(bam_in, normal, chrom, bp1, bp2):
     """Get the number of mapped reads in both t and n bams accross all chroms
        Then get the number of mapped reads within the CNV region
@@ -30,7 +31,7 @@ def get_depth(bam_in, normal, chrom, bp1, bp2):
 
     adj_ratio = round((t_corr / n_corr), 2)
 
-    print math.log(adj_ratio, 2)
+    print "Adj ratio: %s" % adj_ratio
 
     print("Normalised read count ratio: %s (%s/%s)") % (adj_ratio, t_corr, n_corr)
     return (n_corr, t_corr, adj_ratio)
@@ -56,6 +57,7 @@ def count_reads(bamfile, chromosomes):
 
     print("Total number of mapped reads in %s: %s") % (bamfile, total_mapped)
     return(total_mapped_chrom, total_mapped)
+
 
 def region_depth(bamfile, chrom, bp1, bp2):
     """Count the total number of mapped reads in a genomic region, filtering

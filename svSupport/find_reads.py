@@ -31,6 +31,8 @@ class FindReads(object):
         self.bp2_class = bp2_class
 
     def set_window(self, breakpoint):
+        """This should just return a chunk surrounding each
+           breakpoint rather than trying to be too fancy ..."""
 
         if self.bp1_class == 'F_bp1':
             bp1_start = self.bp1 - self.slop
