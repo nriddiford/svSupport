@@ -3,6 +3,7 @@ import math
 from itertools import islice
 import pysam
 
+
 def classify_sv(bp1_best_guess, bp2_best_guess):
     if bp1_best_guess == 'F_bp1' and bp2_best_guess == 'bp2_R':
         sv_type = 'Deletion'
@@ -27,11 +28,11 @@ def classify_sv(bp1_best_guess, bp2_best_guess):
 
 def classify_cnv(chrom, rdr):
     if chrom == 'X' or chrom == 'Y':
-        if (rdr <= 1):
+        if (rdr < 1):
             cnv_type = 'Homozygous deletion'
         elif (rdr >= 3):
             cnv_type = 'Homozygous triplication'
-        elif (rdr >= 2):
+        elif (rdr >= 1):
             cnv_type = 'Homozygous duplication'
     else:
         if (rdr <= 0.5):
@@ -44,7 +45,7 @@ def classify_cnv(chrom, rdr):
             cnv_type = 'Heterozygous duplication'
 
     print("%s on %s") % (cnv_type, chrom)
-    return(cnv_type)
+    return cnv_type
 
 
 def make_dirs(out_dir):
@@ -75,7 +76,6 @@ def print_options(bam_in, ratio, chrom, bp1, bp2, find_bps, debug, test, out_dir
     print("--------")
     print("python svSupport.py -i %s -l %s:%s-%s -f %s -t %s -d %d -o %s") % (bam_in, chrom, bp1, bp2, find_bps, test, debug, out_dir )
     print("--------")
-
 
 
 def filterfn(read):

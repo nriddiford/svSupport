@@ -1,3 +1,4 @@
+import math
 
 class AlleleFrequency(object):
     def __init__(self, total_oppose, total_support, tumour_purity, chrom):
@@ -46,21 +47,23 @@ class AlleleFrequency(object):
         c = self.chrom
 
         su = abs(n - t)
-        # print("Supporting reads = %s (%s-%s)") % (su, n, t)
+        print("Supporting reads = %s (%s-%s)") % (su, n, t)
         op = abs(n - su)
+        print("Opposing reads = %s (%s-%s)") % (op, n, su)
+
         r1 = round((t/n), 2)
         print("* read depth ratio = %s " % r1)
         af = su/(op+su)
 
-        adjop = (op ** p) + 0.01
+        adjop = (op * p) + 0.01
+        print("Adjusting op reads for tp: %s = %s (%s*%s)") % (p, adjop, op, p)
+
         adjaf = su/(su+adjop)
         # print("%s / (%s + %s)") % (su, adjop, su)
-        if r1 <=1:
-            r2 = round(t/(n+(n*p)), 2)
-            print("* Purity-adjusted read depth ratio = %s " % r2)
+        if r1 <= 1:
+            r2 = round(t/(n + adjop), 2)
         else:
-            r2 = round((t+(t*p))/n, 2)
-            print("* Purity-adjusted read depth ratio = %s " % r2)
+            r2 = round((t + adjop)/n, 2)
 
         if c != 'X' and c != 'Y':
             adjaf = round((adjaf/2), 2)
@@ -69,6 +72,9 @@ class AlleleFrequency(object):
             adjaf = round(adjaf, 2)
             af = round(af, 2)
 
+        print("* Log2, purity-adjusted read depth ratio = %s " % round(math.log(r2, 2), 2) )
+
+        print
         print("* allele frequency = %s " % af)
         print("* Purity-adjusted allele frequency = %s " % adjaf)
         return(adjaf, r2)

@@ -2,6 +2,7 @@ import pysam
 from collections import defaultdict
 import re, os
 
+from utils import find_is_sd
 
 def f_bp(read, bp):
     if not read.is_proper_pair and (not read.is_reverse and read.reference_start + read.reference_length <= bp):
@@ -20,11 +21,15 @@ def bp_f(read, bp):
 
 def guess_type(chrom, bp, bp_number, options):
     out_file = os.path.join(options.out_dir, bp_number + "_classifying_reads" + ".bam")
+    slop = find_is_sd(options.in_file, 10000)
+
     samfile = pysam.Samfile(options.in_file, "rb")
 
+
     with pysam.AlignmentFile(out_file, "wb", template=samfile) as bpReads:
-        start = bp - 200
-        stop = bp + 200
+        start = bp - slop
+        stop = bp + slop
+
         count = 0
         sv_reads = defaultdict(int)
         for read in samfile.fetch(chrom, start, stop):
