@@ -2,6 +2,7 @@ import pysam
 import os
 import ntpath
 
+
 def merge_bams(out_file, out_dir, bams):
     s_bams = []
     for bam_file in bams:
@@ -26,6 +27,7 @@ def merge_bams(out_file, out_dir, bams):
 
     return sorted_bam
 
+
 def sort_bam(out_dir, bam):
     head, file_name = ntpath.split(bam)
     file_name = os.path.splitext(file_name)[0]
@@ -43,6 +45,7 @@ def sort_bam(out_dir, bam):
         print("Can't remove %s" % bam)
 
     return(sorted_bam)
+
 
 def index_bam(bam):
     try:
