@@ -91,5 +91,6 @@ def find_is_sd(bam_file, samplesize):
     assert len(l) == samplesize
     mean = float(sum(l)) / len(l)
     sdev = math.sqrt(float(sum([(x - mean) ** 2 for x in l])) / (len(l) - 1))
-    print('Using slop equal to 5 standard deviations from insert size mean: {:.0f}'.format(round(mean + 5 * sdev)))
-    return mean + 5 * sdev
+    slop = int(mean + 5 * sdev)
+    print('Using slop equal to 5 standard deviations from insert size mean: {:.0f}'.format(slop))
+    return slop
