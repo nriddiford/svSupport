@@ -53,9 +53,9 @@ def worker(options):
     forward_reads = defaultdict(int)
     reverse_reads = defaultdict(int)
 
-    bp1_split_reads, bp1_best_guess, bp1_clipped_bam, bp1_disc_bam = get_reads(bp_regions, slop, 'bp1', chrom, bp1, bp2, options, forward_reads, reverse_reads)
+    bp1_split_reads, bp1_best_guess, bp1_clipped_bam, bp1_disc_bam = get_reads(bp_regions, 'bp1', chrom, bp1, bp2, options, forward_reads, reverse_reads)
     print bp1_best_guess, bp1_split_reads
-    bp2_split_reads, bp2_best_guess, bp2_clipped_bam, bp2_disc_bam = get_reads(bp_regions, slop, 'bp2', chrom, bp2, bp1, options, forward_reads, reverse_reads)
+    bp2_split_reads, bp2_best_guess, bp2_clipped_bam, bp2_disc_bam = get_reads(bp_regions, 'bp2', chrom, bp2, bp1, options, forward_reads, reverse_reads)
     print bp2_best_guess, bp2_split_reads
 
     clio = os.path.join(out_dir, 'clipped_reads.bam')
@@ -156,7 +156,7 @@ def find_breakpoints(regions, chrom, bp1, bp2, options):
         split_reads = 0
         readSig = defaultdict(int)
         for read in samfile.fetch(chrom, bp1 - 10, bp1 + 10):
-            readSig, split_reads, bpID = getClipped(read, i, 'f', 'bp1', readSig, split_reads, options)
+            read, readSig, split_reads, bpID = getClipped(read, i, 'f', 'bp1', readSig, split_reads, options)
         bp1_guess[i] = split_reads
     bp1 = max(bp1_guess, key=bp1_guess.get)
     print("Breakpoint 1 adjusted to %s (%s split reads supporting)") % (bp1, bp1_guess[bp1])
@@ -166,7 +166,7 @@ def find_breakpoints(regions, chrom, bp1, bp2, options):
         split_reads = 0
         readSig = defaultdict(int)
         for read in samfile.fetch(chrom, bp2 - 10, bp2 + 10):
-            readSig, split_reads, bpID = getClipped(read, i, 'f', 'bp2', readSig, split_reads, options)
+            read, readSig, split_reads, bpID = getClipped(read, i, 'f', 'bp2', readSig, split_reads, options)
         bp2_guess[i] = split_reads
     bp2 = max(bp2_guess, key=bp2_guess.get)
     print("Breakpoint 2 adjusted to %s (%s split reads supporting)") % (bp2, bp2_guess[bp2])

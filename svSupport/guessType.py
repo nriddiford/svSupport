@@ -3,35 +3,28 @@ from collections import defaultdict
 import re, os
 
 
-def disc_reads(read, bp2, forward_reads, reverse_reads):
-    if read.is_read1:
-        forward_reads[read.query_name] += 1
-        if forward_reads[read.query_name] > 1:
-            return False
+def get_reads(bp_regions, bp_number, chrom, bp, bp2, options, forward_reads, reverse_reads):
+    """Get reads supporting a breakpoint and write both discordant and clipped supporting reads.
+       Count the evidence supporting different types of breakpoint arrangements and return the one
+       with most support:
 
-    elif read.is_read2:
-        reverse_reads[read.query_name] += 1
-        if reverse_reads[read.query_name] > 1:
-            return False
+       f_bp : ---->[x]=====
+       bp_f : =====[x]---->
+       r_bp : <----[x]=====
+       bp_r : =====[x]<----
 
-    if not read.is_proper_pair and (abs(read.next_reference_start - bp2) <= 350):
-        return True
-
-
-def get_reads(bp_regions, slop, bp_number, chrom, bp, bp2, options, forward_reads, reverse_reads):
+       """
     clipped_out = os.path.join(options.out_dir, bp_number + "_clipped_reads" + ".bam")
     disc_out = os.path.join(options.out_dir, bp_number + "_disc_reads" + ".bam")
 
     samfile = pysam.Samfile(bp_regions, "rb")
 
     with pysam.AlignmentFile(clipped_out, "wb", template=samfile) as bpReads, pysam.AlignmentFile(disc_out, "wb", template=samfile) as discReads:
-        start = bp - slop
-        stop = bp + slop
-
-        print ("Looking for reads in %s region: %s:%s-%s" % (bp_number, chrom, start, stop))
         split_reads = 0
-
         readSig = defaultdict(int)
+
+        start = bp - 500
+        stop = bp + 500
 
         for read in samfile.fetch(chrom, start, stop):
             if read.is_reverse:
@@ -39,12 +32,12 @@ def get_reads(bp_regions, slop, bp_number, chrom, bp, bp2, options, forward_read
             else:
                 direction = 'f'
 
-            readSig, split_reads, bpID = getClipped(read, bp, direction, bp_number, readSig, split_reads, options)
+            read, readSig, split_reads, bpID = getClipped(read, bp, direction, bp_number, readSig, split_reads, options)
 
             if bpID:
                 bpReads.write(read)
 
-            if not bpID and disc_reads(read, bp2, forward_reads, reverse_reads):
+            if disc_reads(read, bp2, forward_reads, reverse_reads):
                 tag = ' '.join(['discordant', direction, 'read'])
                 tagRead(read, tag)
                 if read.is_reverse:
@@ -69,6 +62,12 @@ def get_reads(bp_regions, slop, bp_number, chrom, bp, bp2, options, forward_read
 
 
 def getClipped(read, bp, direction, bp_number, readSig, split_reads, options):
+    """If reads are clipped at the breakpoint, classify them based on their mapping signature:
+       f_bp : ---->[x]=====
+       bp_f : =====[x]---->
+       r_bp : <----[x]=====
+       bp_r : =====[x]<----
+       """
     read_end = read.reference_start + read.reference_length
     bpID = None
     # if clipped
@@ -86,15 +85,11 @@ def getClipped(read, bp, direction, bp_number, readSig, split_reads, options):
         readSig[bpID] += 1
         split_reads += 1
 
-    return readSig, split_reads, bpID
-
-
-def tagRead(read, tag):
-    read.set_tag('SV', tag, value_type='Z')
-    return read
+    return read, readSig, split_reads, bpID
 
 
 def rightClipped(read, direction, bp_number, options):
+    """Looks for reads that are clipped to the right of breakpoint"""
     if re.findall(r".*?M(\d+)[S|H]", read.cigarstring):
         if options.debug:
             if direction == 'f':
@@ -106,6 +101,7 @@ def rightClipped(read, direction, bp_number, options):
 
 
 def leftClipped(read, direction, bp_number, options):
+    """Looks for reads that are clipped to the left of breakpoint"""
     if re.findall(r'(\d+)[S|H].*?M', read.cigarstring):
         if options.debug:
             if direction == 'f':
@@ -114,3 +110,27 @@ def leftClipped(read, direction, bp_number, options):
                 print("<--- read clipped to left: %s <-]-- %s") % (read.cigarstring, read.query_name)
         bpID = '_'.join([bp_number, direction])
         return bpID
+
+
+def disc_reads(read, bp2, forward_reads, reverse_reads):
+    """Return true if read is both discordant (not read.is_proper_pair)
+       and not contained in f/r reads dict. This prevents the same read being counted
+       twice in regions that overlap"""
+    if read.is_read1:
+        forward_reads[read.query_name] += 1
+        if forward_reads[read.query_name] > 1:
+            return False
+
+    elif read.is_read2:
+        reverse_reads[read.query_name] += 1
+        if reverse_reads[read.query_name] > 1:
+            return False
+
+    if not read.is_proper_pair and (abs(read.next_reference_start - bp2) <= 350):
+        return True
+
+
+def tagRead(read, tag):
+    """Tag read with custom tag 'SV' - indicating its involvement in SV"""
+    read.set_tag('SV', tag, value_type='Z')
+    return read
