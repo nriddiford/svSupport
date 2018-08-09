@@ -11,7 +11,7 @@ from depthOps import get_depth
 from parseConfig import *
 from getArgs import get_args
 from utils import *
-from guessType import guess_type
+from guessType import get_reads
 
 def worker(options):
     bam_in = options.in_file
@@ -54,10 +54,10 @@ def worker(options):
     if options.guess:
         forward_reads = defaultdict(int)
         reverse_reads = defaultdict(int)
-        bp1_split_reads, bp1_best_guess, bp1_clipped_bam, bp1_disc_bam = guess_type(bp_regions, slop, 'bp1', chrom, bp1, bp2, options, forward_reads, reverse_reads)
+        bp1_split_reads, bp1_best_guess, bp1_clipped_bam, bp1_disc_bam = get_reads(bp_regions, slop, 'bp1', chrom, bp1, bp2, options, forward_reads, reverse_reads)
         print bp1_best_guess, bp1_split_reads
 
-        bp2_split_reads, bp2_best_guess, bp2_clipped_bam, bp2_disc_bam = guess_type(bp_regions, slop, 'bp2', chrom, bp2, bp1, options, forward_reads, reverse_reads)
+        bp2_split_reads, bp2_best_guess, bp2_clipped_bam, bp2_disc_bam = get_reads(bp_regions, slop, 'bp2', chrom, bp2, bp1, options, forward_reads, reverse_reads)
 
         print bp2_best_guess, bp2_split_reads
 

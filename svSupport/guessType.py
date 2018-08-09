@@ -96,7 +96,7 @@ def getMate(read):
         return False
 
 
-def guess_type(bp_regions, slop, bp_number, chrom, bp, bp2, options, forward_reads, reverse_reads):
+def get_reads(bp_regions, slop, bp_number, chrom, bp, bp2, options, forward_reads, reverse_reads):
     clipped_out = os.path.join(options.out_dir, bp_number + "_clipped_reads" + ".bam")
     disc_out = os.path.join(options.out_dir, bp_number + "_disc_reads" + ".bam")
 
@@ -109,146 +109,76 @@ def guess_type(bp_regions, slop, bp_number, chrom, bp, bp2, options, forward_rea
         print ("Looking for reads in %s region: %s:%s-%s" % (bp_number, chrom, start, stop))
         split_reads = 0
         direction = 'f'
-        breakpoint_class = defaultdict(int)
+        readSig = defaultdict(int)
 
         for read in samfile.fetch(chrom, start, stop):
             read_end = read.reference_start + read.reference_length
-
+            bpID = None
             if read.is_reverse:
                 direction = 'r'
 
-            # bpID = fClipped(read, bp, direction, bp_number)
-            # if not bpID:
-            #     bpID = rClipped(read, bp, direction, bp_number)
-            #
-            # breakpoint_class[bpID] += 1
-
-            # Find forward-facing clipped reads
+            # if read is clipped
             if bp == read_end and re.findall(r'(\d+)[S|H]', read.cigarstring):
+                # and forward-facing
                 bpID = fClipped(read, bp, direction, bp_number)
-                if not bpID:
+            if not bpID:
+                # or reverse-facing
+                if bp == read.reference_start + 1 and re.findall(r'(\d+)[S|H]', read.cigarstring):
                     bpID = rClipped(read, bp, direction, bp_number)
-                if bpID:
-                    breakpoint_class[bpID] += 1
-                    split_reads += 1
-                    bpReads.write(read)
 
-                # if re.findall(r".*?M(\d+)[S|H]", read.cigarstring):
-                #     print("----> read clipped to right: %s ---|> %s") % (read.cigarstring, read.query_name)
-                #     bpID = '_'.join([direction, bp_number])
-                #     breakpoint_class[bpID] += 1
-                #     split_reads += 1
-                #     bpReads.write(read)
-                #
-                # elif re.findall(r'(\d+)[S|H].*?M', read.cigarstring):
-                #     print("----> read clipped to left: %s |---> %s") % (read.cigarstring, read.query_name)
-                #     bpID = '_'.join([bp_number, direction])
-                #     breakpoint_class[bpID] += 1
-                #     split_reads += 1
-                #     bpReads.write(read)
+            if bpID:
+                read.set_tag('SV', 'clipped', value_type='Z')
+                readSig[bpID] += 1
+                split_reads += 1
+                bpReads.write(read)
 
-            # Find reverse-facing clipped reads
-            if bp == read.reference_start + 1 and re.findall(r'(\d+)[S|H]', read.cigarstring):
-                if re.findall(r".*?M(\d+)[S|H]", read.cigarstring):
-                    print("<--- read clipped to right: %s <---| %s") % (read.cigarstring, read.query_name)
-                    bpID = '_'.join([direction, bp_number])
-                    breakpoint_class[bpID] += 1
-                    split_reads += 1
-                    bpReads.write(read)
-
-                elif re.findall(r'(\d+)[S|H].*?M', read.cigarstring):
-                    print("<--- read clipped to left: %s <|--- %s") % (read.cigarstring, read.query_name)
-                    bpID = '_'.join([bp_number, direction])
-                    breakpoint_class[bpID] += 1
-                    split_reads += 1
-                    bpReads.write(read)
-
-
-            if disc_reads(read, bp2, forward_reads, reverse_reads):
+            elif disc_reads(read, bp2, forward_reads, reverse_reads):
+                read.set_tag('SV', 'disc', value_type='Z')
                 if read.is_reverse:
                     bpID = '_'.join([bp_number, direction])
-                    breakpoint_class[bpID] += 1
+                    print("<---- discordant read supports breakpoints %s: %s") % (bp_number, read.query_name)
+
                 else:
+                    print("----> discordant read supports breakpoints %s: %s") % (bp_number, read.query_name)
+
                     bpID = '_'.join([direction, bp_number])
-                    breakpoint_class[bpID] += 1
+
+                readSig[bpID] += 1
                 discReads.write(read)
 
             # elif read.tid == read.rnext and not read.is_duplicate:
 
-
-                # pointer = samfile.tell()
-                # try:
-                #     mate = samfile.mate(read)
-                # except ValueError:
-                #     continue
-                # if disc_reads(read, mate, bp2):
-                #     discReads.write(read)
-                # # samfile.seek(pointer)
-
-
-                    # discReads.write(read)
-                # discreads.append(read.qname)
-            # bpReads.write(read)
-            # elif bp_number == 'bp2' and disc_reads(read, bp, bp2):
-            #     discreads.append(read.qname)
-            #     discReads.write(read)
-
-            # # If not clipped reads then
-            # elif bp_number == 'bp1':
-            #     if f_bp(read, bp):
-            #         sv_reads['F_bp1'] += 1
-            #         bpReads.write(read)
-            #         print read
-            #     elif bp_r(read, bp):
-            #         sv_reads['bp1_R'] += 1
-            #         # bpReads.write(read)
-            #
-            # elif bp_number == 'bp2':
-            #     if bp_r(read, bp):
-            #         sv_reads['bp2_R'] += 1
-            #         bpReads.write(read)
-            #     elif f_bp(read, bp):
-            #         sv_reads['F_bp2'] += 1
-            #         bpReads.write(read)
-            #     elif bp_f(read, bp):
-            #         sv_reads['bp2_F'] += 1
-            #         bpReads.write(read)
-
     pysam.index(clipped_out)
     pysam.index(disc_out)
-    breakpoint_class[None] = 0
-    maxValKey = max(breakpoint_class, key=breakpoint_class.get)
+    readSig[None] = 0
+    # get most common breakpoint class
+    maxValKey = max(readSig, key=readSig.get)
 
     return (split_reads, maxValKey, clipped_out, disc_out)
 
 
 
 def fClipped(read, bp, direction, bp_number):
-    read_end = read.reference_start + read.reference_length
     bpID = None
+    if re.findall(r".*?M(\d+)[S|H]", read.cigarstring):
+        print("----> read clipped to right: %s ---|> %s") % (read.cigarstring, read.query_name)
+        bpID = '_'.join([direction, bp_number])
 
-    if bp == read_end and re.findall(r'(\d+)[S|H]', read.cigarstring):
-        if re.findall(r".*?M(\d+)[S|H]", read.cigarstring):
-            print("----> read clipped to right: %s ---|> %s") % (read.cigarstring, read.query_name)
-            bpID = '_'.join([direction, bp_number])
-
-        elif re.findall(r'(\d+)[S|H].*?M', read.cigarstring):
-            print("----> read clipped to left: %s |---> %s") % (read.cigarstring, read.query_name)
-            bpID = '_'.join([bp_number, direction])
+    elif re.findall(r'(\d+)[S|H].*?M', read.cigarstring):
+        print("----> read clipped to left: %s |---> %s") % (read.cigarstring, read.query_name)
+        bpID = '_'.join([bp_number, direction])
 
     return bpID
 
 def rClipped(read, bp, direction, bp_number):
     bpID = None
-    
-    if bp == read.reference_start + 1 and re.findall(r'(\d+)[S|H]', read.cigarstring):
-        if re.findall(r".*?M(\d+)[S|H]", read.cigarstring):
-            print("<--- read clipped to right: %s <---| %s") % (read.cigarstring, read.query_name)
-            bpID = '_'.join([direction, bp_number])
 
+    if re.findall(r".*?M(\d+)[S|H]", read.cigarstring):
+        print("<--- read clipped to right: %s <---| %s") % (read.cigarstring, read.query_name)
+        bpID = '_'.join([direction, bp_number])
 
-        elif re.findall(r'(\d+)[S|H].*?M', read.cigarstring):
-            print("<--- read clipped to left: %s <|--- %s") % (read.cigarstring, read.query_name)
-            bpID = '_'.join([bp_number, direction])
+    elif re.findall(r'(\d+)[S|H].*?M', read.cigarstring):
+        print("<--- read clipped to left: %s <|--- %s") % (read.cigarstring, read.query_name)
+        bpID = '_'.join([bp_number, direction])
 
     return bpID
