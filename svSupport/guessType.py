@@ -39,22 +39,25 @@ def get_reads(bp_regions, slop, bp_number, chrom, bp, bp2, options, forward_read
             else:
                 direction = 'f'
 
-            readSig, split_reads, bpID = getClipped(read, bp, direction, bp_number, readSig, split_reads, bpReads)
+            readSig, split_reads, bpID = getClipped(read, bp, direction, bp_number, readSig, split_reads, options)
+
+            if bpID:
+                bpReads.write(read)
 
             if not bpID and disc_reads(read, bp2, forward_reads, reverse_reads):
                 tag = ' '.join(['discordant', direction, 'read'])
                 tagRead(read, tag)
-
                 if read.is_reverse:
                     bpID = '_'.join([bp_number, direction])
-                    print("<---- discordant read supports breakpoints %s: %s") % (bp_number, read.query_name)
+                    if options.debug:
+                        print("<---- discordant read supports breakpoints %s: %s") % (bp_number, read.query_name)
                 else:
-                    print("----> discordant read supports breakpoints %s: %s") % (bp_number, read.query_name)
+                    if options.debug:
+                        print("----> discordant read supports breakpoints %s: %s") % (bp_number, read.query_name)
                     bpID = '_'.join([direction, bp_number])
 
                 readSig[bpID] += 1
                 discReads.write(read)
-
 
     pysam.index(clipped_out)
     pysam.index(disc_out)
@@ -65,24 +68,23 @@ def get_reads(bp_regions, slop, bp_number, chrom, bp, bp2, options, forward_read
     return (split_reads, maxValKey, clipped_out, disc_out)
 
 
-def getClipped(read, bp, direction, bp_number, readSig, split_reads, bpReads):
+def getClipped(read, bp, direction, bp_number, readSig, split_reads, options):
     read_end = read.reference_start + read.reference_length
     bpID = None
     # if clipped
     if re.findall(r'(\d+)[S|H]', read.cigarstring):
         # if right-clipped
         if bp == read_end:
-            bpID = rightClipped(read, direction, bp_number)
+            bpID = rightClipped(read, direction, bp_number, options)
         # if read is left-clipped
         elif not bpID and bp == read.reference_start + 1:
-            bpID = leftClipped(read, direction, bp_number)
+            bpID = leftClipped(read, direction, bp_number, options)
 
     if bpID:
         tag = ' '.join(['clipped', direction, 'read'])
         tagRead(read, tag)
         readSig[bpID] += 1
         split_reads += 1
-        bpReads.write(read)
 
     return readSig, split_reads, bpID
 
@@ -92,21 +94,23 @@ def tagRead(read, tag):
     return read
 
 
-def rightClipped(read, direction, bp_number):
+def rightClipped(read, direction, bp_number, options):
     if re.findall(r".*?M(\d+)[S|H]", read.cigarstring):
-        if direction == 'f':
-            print("---> read clipped to right: %s --[-> %s") % (read.cigarstring, read.query_name)
-        else:
-            print("<--- read clipped to right: %s <--[- %s") % (read.cigarstring, read.query_name)
+        if options.debug:
+            if direction == 'f':
+                print("---> read clipped to right: %s --[-> %s") % (read.cigarstring, read.query_name)
+            else:
+                print("<--- read clipped to right: %s <--[- %s") % (read.cigarstring, read.query_name)
         bpID = '_'.join([direction, bp_number])
         return bpID
 
 
-def leftClipped(read, direction, bp_number):
+def leftClipped(read, direction, bp_number, options):
     if re.findall(r'(\d+)[S|H].*?M', read.cigarstring):
-        if direction == 'f':
-            print("---> read clipped to left: %s -]--> %s") % (read.cigarstring, read.query_name)
-        else:
-            print("<--- read clipped to left: %s <-]-- %s") % (read.cigarstring, read.query_name)
+        if options.debug:
+            if direction == 'f':
+                print("---> read clipped to left: %s -]--> %s") % (read.cigarstring, read.query_name)
+            else:
+                print("<--- read clipped to left: %s <-]-- %s") % (read.cigarstring, read.query_name)
         bpID = '_'.join([bp_number, direction])
         return bpID

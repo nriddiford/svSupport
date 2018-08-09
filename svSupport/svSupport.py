@@ -11,7 +11,8 @@ from depthOps import get_depth
 from parseConfig import *
 from getArgs import get_args
 from utils import *
-from guessType import get_reads
+from guessType import get_reads, getClipped
+
 
 def worker(options):
     bam_in = options.in_file
@@ -44,27 +45,54 @@ def worker(options):
 
     bp_regions, slop = get_regions(bam_in, chrom, bp1, bp2, out_dir)
 
-    # if find_bps:
-    #     bp1, bp1_count = hone_bps(bam_in, chrom, bp1, bp1_best_guess)
-    #     bp2, bp2_count = hone_bps(bam_in, chrom, bp2, bp2_best_guess)
-    #
-    #     print("* Bp1 adjusted to: %s [%s split reads found]") % (bp1, bp1_count)
-    #     print("* Bp2 adjusted to: %s [%s split reads found]") % (bp2, bp2_count)
+    if options.find_bps:
+        print "Guessing bp"
 
-    if options.guess:
-        forward_reads = defaultdict(int)
-        reverse_reads = defaultdict(int)
-        bp1_split_reads, bp1_best_guess, bp1_clipped_bam, bp1_disc_bam = get_reads(bp_regions, slop, 'bp1', chrom, bp1, bp2, options, forward_reads, reverse_reads)
-        print bp1_best_guess, bp1_split_reads
+        bp1, bp2 = find_breakpoints(bp_regions, chrom, bp1, bp2, options)
 
-        bp2_split_reads, bp2_best_guess, bp2_clipped_bam, bp2_disc_bam = get_reads(bp_regions, slop, 'bp2', chrom, bp2, bp1, options, forward_reads, reverse_reads)
+    forward_reads = defaultdict(int)
+    reverse_reads = defaultdict(int)
 
-        print bp2_best_guess, bp2_split_reads
+    bp1_split_reads, bp1_best_guess, bp1_clipped_bam, bp1_disc_bam = get_reads(bp_regions, slop, 'bp1', chrom, bp1, bp2, options, forward_reads, reverse_reads)
+    print bp1_best_guess, bp1_split_reads
+    bp2_split_reads, bp2_best_guess, bp2_clipped_bam, bp2_disc_bam = get_reads(bp_regions, slop, 'bp2', chrom, bp2, bp1, options, forward_reads, reverse_reads)
+    print bp2_best_guess, bp2_split_reads
 
-        clio = os.path.join(out_dir, 'clipped_reads.bam')
-        disco = os.path.join(out_dir, 'discordant_reads.bam')
-        merge_bams(clio, out_dir, [bp1_clipped_bam, bp2_clipped_bam])
-        merge_bams(disco, out_dir, [bp1_disc_bam, bp2_disc_bam])
+    clio = os.path.join(out_dir, 'clipped_reads.bam')
+    disco = os.path.join(out_dir, 'discordant_reads.bam')
+    merge_bams(clio, out_dir, [bp1_clipped_bam, bp2_clipped_bam])
+    merge_bams(disco, out_dir, [bp1_disc_bam, bp2_disc_bam])
+
+
+
+    # bp1_guess = {}
+        # for i in range(bp1-5, bp1+5):
+        #     bp1_split_reads, bp1_best_guess, bp1_clipped_bam, bp1_disc_bam = get_reads(bp_regions, slop, 'bp1', chrom, i, bp2, options, forward_reads, reverse_reads)
+        #     bp1_guess[i] = bp1_split_reads
+        #
+        # bp1 = max(bp1_guess, key=bp1_guess.get)
+        # bp2_guess = {}
+        # for i in range(bp2 - 5, bp2 + 5):
+        #     bp2_split_reads, bp2_best_guess, bp2_clipped_bam, bp2_disc_bam = get_reads(bp_regions, slop, 'bp2', chrom, i, bp1, options, forward_reads, reverse_reads)
+        #     bp2_guess[i] = bp2_split_reads
+        #
+        # bp2 = max(bp2_guess, key=bp2_guess.get)
+        #
+        # print("Breakpoint 1 adjusted to %s (%s split reads supporting)") % (bp1, bp1_guess[bp1])
+        # print("Breakpoint 2 adjusted to %s (%s split reads supporting)") % (bp2, bp2_guess[bp2])
+        #
+        #
+        # bp2_split_reads, bp2_best_guess, bp2_clipped_bam, bp2_disc_bam = get_reads(bp_regions, slop, 'bp2', chrom, bp2, bp1, options, forward_reads, reverse_reads)
+        #
+        #
+        # print bp2_best_guess, bp2_split_reads
+        #
+
+
+
+
+
+
 
 
         # bp1_reads, bp1_best_guess = guess_type2(chrom, bp1, bp2, options)
@@ -118,6 +146,61 @@ def worker(options):
     #     allele_frequency = af.read_support_af()
     #
     #     return (chrom, bp1, bp2, allele_frequency)
+
+
+
+def find_breakpoints(regions, chrom, bp1, bp2, options):
+    samfile = pysam.Samfile(regions, "rb")
+    bp1_guess = {}
+    for i in range(bp1 - 5, bp1 + 5):
+        split_reads = 0
+        readSig = defaultdict(int)
+        for read in samfile.fetch(chrom, bp1 - 10, bp1 + 10):
+            readSig, split_reads, bpID = getClipped(read, i, 'f', 'bp1', readSig, split_reads, options)
+        bp1_guess[i] = split_reads
+    bp1 = max(bp1_guess, key=bp1_guess.get)
+    print("Breakpoint 1 adjusted to %s (%s split reads supporting)") % (bp1, bp1_guess[bp1])
+
+    bp2_guess = {}
+    for i in range(bp2 - 5, bp2 + 5):
+        split_reads = 0
+        readSig = defaultdict(int)
+        for read in samfile.fetch(chrom, bp2 - 10, bp2 + 10):
+            readSig, split_reads, bpID = getClipped(read, i, 'f', 'bp2', readSig, split_reads, options)
+        bp2_guess[i] = split_reads
+    bp2 = max(bp2_guess, key=bp2_guess.get)
+    print("Breakpoint 2 adjusted to %s (%s split reads supporting)") % (bp2, bp2_guess[bp2])
+
+
+    return bp1, bp2
+
+    # for i in range(bp1-5, bp1+5):
+        #
+        #
+        #
+        #
+        #
+        #
+        #     bp1_split_reads, bp1_best_guess, bp1_clipped_bam, bp1_disc_bam = get_reads(bp_regions, slop, 'bp1', chrom, i, bp2, options, forward_reads, reverse_reads)
+        #     bp1_guess[i] = bp1_split_reads
+        #
+        # bp1 = max(bp1_guess, key=bp1_guess.get)
+        # bp2_guess = {}
+        # for i in range(bp2 - 5, bp2 + 5):
+        #     bp2_split_reads, bp2_best_guess, bp2_clipped_bam, bp2_disc_bam = get_reads(bp_regions, slop, 'bp2', chrom, i, bp1, options, forward_reads, reverse_reads)
+        #     bp2_guess[i] = bp2_split_reads
+        #
+        # bp2 = max(bp2_guess, key=bp2_guess.get)
+        #
+        # print("Breakpoint 1 adjusted to %s (%s split reads supporting)") % (bp1, bp1_guess[bp1])
+        # print("Breakpoint 2 adjusted to %s (%s split reads supporting)") % (bp2, bp2_guess[bp2])
+
+
+
+
+
+
+
 
 
 def hone_bps(bam_in, chrom, bp, bp_class):
