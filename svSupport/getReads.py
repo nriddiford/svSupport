@@ -3,7 +3,7 @@ from collections import defaultdict
 import re, os
 
 
-def get_reads(bp_regions, bp_number, chrom, bp, bp2, options, forward_reads, reverse_reads, chroms):
+def get_reads(bp_regions, bp_number, chrom, bp, bp2, options, forward_reads, reverse_reads, chroms, bp_sig):
     """Get reads supporting a breakpoint and write both discordant and clipped supporting reads.
        Count the evidence supporting different types of breakpoint arrangements and return the one
        with most support:
@@ -21,7 +21,6 @@ def get_reads(bp_regions, bp_number, chrom, bp, bp2, options, forward_reads, rev
 
     with pysam.AlignmentFile(clipped_out, "wb", template=samfile) as bpReads, pysam.AlignmentFile(disc_out, "wb", template=samfile) as discReads:
         split_reads = 0
-        readSig = defaultdict(int)
 
         start = bp - 500
         stop = bp + 500
@@ -42,7 +41,7 @@ def get_reads(bp_regions, bp_number, chrom, bp, bp2, options, forward_reads, rev
             else:
                 direction = 'f'
 
-            read, readSig, split_reads, bpID = getClipped(read, bp, direction, bp_number, readSig, split_reads, options)
+            read, bp_sig, split_reads, bpID = getClipped(read, bp, direction, bp_number, bp_sig, split_reads, options)
 
             if bpID:
                 bpReads.write(read)
@@ -55,44 +54,53 @@ def get_reads(bp_regions, bp_number, chrom, bp, bp2, options, forward_reads, rev
                     if options.debug:
                         print("<---- discordant read supports breakpoints %s: %s") % (bp_number, read.query_name)
                 else:
+                    bpID = '_'.join([direction, bp_number])
                     if options.debug:
                         print("----> discordant read supports breakpoints %s: %s") % (bp_number, read.query_name)
-                    bpID = '_'.join([direction, bp_number])
 
-                readSig[bpID] += 1
+
+                bp_sig[bpID] += 1
                 discReads.write(read)
             if options.chromfile:
-                alien_split, alien_paired = getAlienDNA(bpID, read, alien_split, alien_paired, chroms)
-            te_tagged = getTaggedReads(bpID, read, te_tagged)
+                alien_split, alien_paired = getAlienDNA(bpID, read, alien_split, alien_paired, chroms, bp_number, direction)
+            te_tagged = getTaggedReads(bpID, read, te_tagged, bp_number, direction)
 
 
 
     pysam.index(clipped_out)
     pysam.index(disc_out)
-    readSig[None] = 0
+    bp_sig[None] = 0
     te_tagged[None] = 0
 
     # get most common breakpoint class
-    maxValKey = max(readSig, key=readSig.get)
+    maxValKey = max(bp_sig, key=bp_sig.get)
     te = max(te_tagged, key=te_tagged.get)
 
-    return (split_reads, maxValKey, clipped_out, disc_out, alien_split, alien_paired, te, te_tagged)
+    return (split_reads, maxValKey, clipped_out, disc_out, alien_split, alien_paired, te, te_tagged, bp_sig)
 
 
-def getAlienDNA(bpID, read, alien_split, alien_paired, chroms):
+def getAlienDNA(bpID, read, alien_split, alien_paired, chroms, bp_number, direction):
     if bpID and read.is_supplementary:
-        sa_chrom = read.get_tag('SA').split(',')[0]
-        if sa_chrom not in chroms:
-            # print "Clipped reads partially aligns to non-reference chromosome: %s (%s)" % (sa_chrom, read.query_name)
-            alien_split += 1
+        try:
+            sa_chrom = read.get_tag('SA').split(',')[0]
+            if sa_chrom not in chroms:
+                # print "Clipped reads partially aligns to non-reference chromosome: %s (%s)" % (sa_chrom, read.query_name)
+                alien_split += 1
+        except:
+            pass
 
     elif read.next_reference_name not in chroms:
-        # print "Read mate maps to non-reference chromosome: %s (%s)" % (read.next_reference_name, read.query_name)
-        alien_paired += 1
+        if bp_number == 'bp1' and direction == 'f':
+            print "forward read has mate mapped to non-reference chromosome: %s (%s)" % (read.next_reference_name, read.query_name)
+            alien_paired += 1
+        elif bp_number == 'bp2' and direction == 'r':
+            print "reverse read has mate mapped to non-reference chromosome: %s (%s)" % (read.next_reference_name, read.query_name)
+            alien_paired += 1
+
     return alien_split, alien_paired
 
 
-def getTaggedReads(bpID, read, te_tagged):
+def getTaggedReads(bpID, read, te_tagged, bp_number, direction):
     if bpID and read.is_supplementary:
         try:
             sa_te = read.get_tag('AD').split(',')[0]
@@ -104,15 +112,19 @@ def getTaggedReads(bpID, read, te_tagged):
     try:
         te = read.get_tag('BR').split(',')[0]
         te = '_'.join(te.split('_')[1:])
-        print "paired read has mate in te:", te, read.query_name
-        te_tagged[te] += 1
+        if bp_number == 'bp1' and direction == 'f':
+            print "foward read has mate in te:", te, read.query_name
+            te_tagged[te] += 1
+        elif bp_number == 'bp2' and direction == 'r':
+            print "reverse read has mate in te:", te, read.query_name
+            te_tagged[te] += 1
     except KeyError:
         pass
 
     return te_tagged
 
 
-def getClipped(read, bp, direction, bp_number, readSig, split_reads, options):
+def getClipped(read, bp, direction, bp_number, bp_sig, split_reads, options):
     """If reads are clipped at the breakpoint, classify them based on their mapping signature:
        f_bp : ---->[x]=====
        bp_f : =====[x]---->
@@ -133,10 +145,10 @@ def getClipped(read, bp, direction, bp_number, readSig, split_reads, options):
     if bpID:
         tag = ' '.join(['clipped', direction, 'read'])
         tagRead(read, tag)
-        readSig[bpID] += 1
+        bp_sig[bpID] += 1
         split_reads += 1
 
-    return read, readSig, split_reads, bpID
+    return read, bp_sig, split_reads, bpID
 
 
 def rightClipped(read, direction, bp_number, options):
