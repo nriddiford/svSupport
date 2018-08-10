@@ -21,6 +21,12 @@ def get_args():
                            "on read depth",
                       metavar="FILE")
 
+    parser.add_option("--chromosomes",
+                      dest="chromfile",
+                      action="store",
+                      help="A file listing chromosome names to consider for normal mapping",
+                      metavar="FILE")
+
     parser.add_option("-p",
                       "--purity",
                       dest="purity",
