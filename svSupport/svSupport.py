@@ -58,8 +58,9 @@ def worker(options):
 
     forward_reads = defaultdict(int)
     reverse_reads = defaultdict(int)
+    bp_sig = defaultdict(int)
 
-    bp1_split_reads, bp1_best_guess, bp1_clipped_bam, bp1_disc_bam, non_native_split_bp1, non_native_paired_bp1, te1, te_tagged1 = get_reads(bp_regions, 'bp1', chrom, bp1, bp2, options, forward_reads, reverse_reads, chroms)
+    bp1_split_reads, bp1_best_guess, bp1_clipped_bam, bp1_disc_bam, non_native_split_bp1, non_native_paired_bp1, te1, te_tagged1, bp_sig = get_reads(bp_regions, 'bp1', chrom, bp1, bp2, options, forward_reads, reverse_reads, chroms, bp_sig)
     print "Most abundant read signature: %s (%s split reads)" % (bp1_best_guess, bp1_split_reads)
     if non_native_split_bp1 or non_native_paired_bp1:
         print " * Found reads supporting integration of foreign DNA at bp1 (%s split, %s paired)" % (non_native_split_bp1, non_native_paired_bp1)
@@ -67,7 +68,7 @@ def worker(options):
     if te_tagged1[te1]:
         print " * %s %s-tagged reads found at bp1" % (te_tagged1[te1], te1)
 
-    bp2_split_reads, bp2_best_guess, bp2_clipped_bam, bp2_disc_bam, non_native_split_bp2, non_native_paired_bp2, te2, te_tagged2 = get_reads(bp_regions, 'bp2', chrom, bp2, bp1, options, forward_reads, reverse_reads, chroms)
+    bp2_split_reads, bp2_best_guess, bp2_clipped_bam, bp2_disc_bam, non_native_split_bp2, non_native_paired_bp2, te2, te_tagged2, bp_sig = get_reads(bp_regions, 'bp2', chrom, bp2, bp1, options, forward_reads, reverse_reads, chroms, bp_sig)
     print "Most abundant read signature: %s (%s split reads)" % (bp2_best_guess, bp2_split_reads)
     if non_native_split_bp2 or non_native_paired_bp2:
         print " * Found reads supporting integration of foreign DNA at bp2 (%s split, %s paired)" % (non_native_split_bp2, non_native_paired_bp2)
@@ -81,6 +82,7 @@ def worker(options):
     merge_bams(disco, out_dir, [bp1_disc_bam, bp2_disc_bam])
 
 
+    print "Breakpoint signatures %s" % (bp_sig)
 
     # bp1_guess = {}
         # for i in range(bp1-5, bp1+5):
@@ -181,8 +183,10 @@ def find_breakpoints(regions, chrom, bp1, bp2, options):
 
             read, readSig, split_reads, bpID = getClipped(read, i, 'f', 'bp1', readSig, split_reads, options)
         bp1_guess[i] = split_reads
-    bp1 = max(bp1_guess, key=bp1_guess.get)
-    print("Breakpoint 1 adjusted to %s (%s split reads supporting)") % (bp1, bp1_guess[bp1])
+    bp1_g = max(bp1_guess, key=bp1_guess.get)
+    if bp1_guess[bp1_g] > 0:
+        bp1 = bp1_g
+        print("Breakpoint 1 adjusted to %s (%s split reads supporting)") % (bp1, bp1_guess[bp1])
 
     bp2_guess = {}
     for i in range(bp2 - 5, bp2 + 5):
@@ -191,8 +195,10 @@ def find_breakpoints(regions, chrom, bp1, bp2, options):
         for read in samfile.fetch(chrom, bp2 - 10, bp2 + 10):
             read, readSig, split_reads, bpID = getClipped(read, i, 'f', 'bp2', readSig, split_reads, options)
         bp2_guess[i] = split_reads
-    bp2 = max(bp2_guess, key=bp2_guess.get)
-    print("Breakpoint 2 adjusted to %s (%s split reads supporting)") % (bp2, bp2_guess[bp2])
+    bp2_g = max(bp2_guess, key=bp2_guess.get)
+    if bp2_guess[bp2_g] > 0:
+        bp2 = bp2_g
+        print("Breakpoint 2 adjusted to %s (%s split reads supporting)") % (bp2, bp2_guess[bp2])
 
     return bp1, bp2
 
