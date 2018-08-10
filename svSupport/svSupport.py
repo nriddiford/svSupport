@@ -11,7 +11,7 @@ from depthOps import get_depth
 from parseConfig import *
 from getArgs import get_args
 from utils import *
-from guessType import get_reads, getClipped
+from getReads import get_reads, getClipped
 
 
 def worker(options):
@@ -28,6 +28,12 @@ def worker(options):
 
     if debug:
         print_options(bam_in, normal, chrom, bp1, bp2, find_bps, debug, options.test, out_dir)
+
+    chroms = []
+    if options.chromfile:
+        chroms = getChroms(options)
+        print(" - Marking SV reads that don't map to one of the following chromosomes: %s") % (chroms)
+
 
     if options.config:
         print("python svSupport.py -i %s -n %s -l %s:%s-%s -p %s -f %s -o %s -v %s") % (
@@ -53,10 +59,21 @@ def worker(options):
     forward_reads = defaultdict(int)
     reverse_reads = defaultdict(int)
 
-    bp1_split_reads, bp1_best_guess, bp1_clipped_bam, bp1_disc_bam = get_reads(bp_regions, 'bp1', chrom, bp1, bp2, options, forward_reads, reverse_reads)
-    print bp1_best_guess, bp1_split_reads
-    bp2_split_reads, bp2_best_guess, bp2_clipped_bam, bp2_disc_bam = get_reads(bp_regions, 'bp2', chrom, bp2, bp1, options, forward_reads, reverse_reads)
-    print bp2_best_guess, bp2_split_reads
+    bp1_split_reads, bp1_best_guess, bp1_clipped_bam, bp1_disc_bam, non_native_split_bp1, non_native_paired_bp1, te1, te_tagged1 = get_reads(bp_regions, 'bp1', chrom, bp1, bp2, options, forward_reads, reverse_reads, chroms)
+    print "Most abundant read signature: %s (%s split reads)" % (bp1_best_guess, bp1_split_reads)
+    if non_native_split_bp1 or non_native_paired_bp1:
+        print " * Found reads supporting integration of foreign DNA at bp1 (%s split, %s paired)" % (non_native_split_bp1, non_native_paired_bp1)
+
+    if te_tagged1[te1]:
+        print " * %s %s-tagged reads found at bp1" % (te_tagged1[te1], te1)
+
+    bp2_split_reads, bp2_best_guess, bp2_clipped_bam, bp2_disc_bam, non_native_split_bp2, non_native_paired_bp2, te2, te_tagged2 = get_reads(bp_regions, 'bp2', chrom, bp2, bp1, options, forward_reads, reverse_reads, chroms)
+    print "Most abundant read signature: %s (%s split reads)" % (bp2_best_guess, bp2_split_reads)
+    if non_native_split_bp2 or non_native_paired_bp2:
+        print " * Found reads supporting integration of foreign DNA at bp2 (%s split, %s paired)" % (non_native_split_bp2, non_native_paired_bp2)
+
+    if te_tagged2[te2]:
+        print " * %s %s-tagged reads found at bp2" % (te_tagged2[te2], te2)
 
     clio = os.path.join(out_dir, 'clipped_reads.bam')
     disco = os.path.join(out_dir, 'discordant_reads.bam')
@@ -156,6 +173,12 @@ def find_breakpoints(regions, chrom, bp1, bp2, options):
         split_reads = 0
         readSig = defaultdict(int)
         for read in samfile.fetch(chrom, bp1 - 10, bp1 + 10):
+            if not read.infer_read_length():
+                """This is a problem - and will skip over reads with no mapped mate (which also have no cigar)"""
+                continue
+            if read.is_duplicate:
+                continue
+
             read, readSig, split_reads, bpID = getClipped(read, i, 'f', 'bp1', readSig, split_reads, options)
         bp1_guess[i] = split_reads
     bp1 = max(bp1_guess, key=bp1_guess.get)
@@ -171,37 +194,19 @@ def find_breakpoints(regions, chrom, bp1, bp2, options):
     bp2 = max(bp2_guess, key=bp2_guess.get)
     print("Breakpoint 2 adjusted to %s (%s split reads supporting)") % (bp2, bp2_guess[bp2])
 
-
     return bp1, bp2
 
-    # for i in range(bp1-5, bp1+5):
-        #
-        #
-        #
-        #
-        #
-        #
-        #     bp1_split_reads, bp1_best_guess, bp1_clipped_bam, bp1_disc_bam = get_reads(bp_regions, slop, 'bp1', chrom, i, bp2, options, forward_reads, reverse_reads)
-        #     bp1_guess[i] = bp1_split_reads
-        #
-        # bp1 = max(bp1_guess, key=bp1_guess.get)
-        # bp2_guess = {}
-        # for i in range(bp2 - 5, bp2 + 5):
-        #     bp2_split_reads, bp2_best_guess, bp2_clipped_bam, bp2_disc_bam = get_reads(bp_regions, slop, 'bp2', chrom, i, bp1, options, forward_reads, reverse_reads)
-        #     bp2_guess[i] = bp2_split_reads
-        #
-        # bp2 = max(bp2_guess, key=bp2_guess.get)
-        #
-        # print("Breakpoint 1 adjusted to %s (%s split reads supporting)") % (bp1, bp1_guess[bp1])
-        # print("Breakpoint 2 adjusted to %s (%s split reads supporting)") % (bp2, bp2_guess[bp2])
 
 
 
-
-
-
-
-
+def getChroms(options):
+    """Read a file specifying native chromosomes"""
+    chroms = []
+    with open(options.chromfile) as c:
+        for line in c:
+            line = line.strip()
+            chroms.append(str(line))
+    return chroms
 
 def hone_bps(bam_in, chrom, bp, bp_class):
     samfile = pysam.Samfile(bam_in, "rb")
