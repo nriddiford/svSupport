@@ -53,6 +53,16 @@ def make_dirs(out_dir):
         os.makedirs(out_dir)
 
 
+def getChroms(options):
+    """Read a file specifying native chromosomes"""
+    chroms = []
+    with open(options.chromfile) as c:
+        for line in c:
+            line = line.strip()
+            chroms.append(str(line))
+    return chroms
+
+
 def cleanup(out_dir):
     print("Cleaning up old files in '%s'" % out_dir)
     out_dir = os.path.abspath(out_dir)
