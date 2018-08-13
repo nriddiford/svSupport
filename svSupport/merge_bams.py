@@ -17,7 +17,7 @@ def merge_bams(out_file, out_dir, bams):
     sorted_bam = sort_bam(out_dir, out_file)
 
     # Remove original bams
-    for sbam in s_bams:
+    for bam, sbam in zip(bams, s_bams):
         try:
             os.remove(sbam)
             os.remove(sbam + ".bai")
@@ -41,8 +41,10 @@ def sort_bam(out_dir, bam):
 
     try:
         os.remove(bam)
-    except:
-        print("Can't remove %s" % bam)
+        os.remove(bam + ".bai")
+    except OSError:
+        print("Couldn't remove %s" % bam)
+        pass
 
     return(sorted_bam)
 
