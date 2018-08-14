@@ -1,3 +1,5 @@
+from __future__ import division
+
 import pysam
 from collections import defaultdict
 import math

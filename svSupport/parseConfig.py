@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+from worker import worker
 
 
 def parse_config(options):
