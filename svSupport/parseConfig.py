@@ -16,22 +16,30 @@ def parse_config(options):
 
     for i in df.index:
         options.in_file = df.loc[i, 'bam']
-
-        options.region = df.loc[i, 'position']
         options.purity = float(df.loc[i, 'tumour_purity'])
         options.normal_bam = df.loc[i, 'normal_bam']
         options.find_bps = True
         options.guess = df.loc[i, 'guess']
 
-        # if df.loc[i, 'type'] in ['DEL', 'DUP']:
-        if df.loc[i, 'chromosome1'] == df.loc[i, 'chromosome2']:
-            chrom, bp1, bp2, allele_frequency = worker(options)
+        if df.loc[i, 'chromosome1'] != df.loc[i, 'chromosome2']:
+            options.region = df.loc[i, 'chromosome1'] + ":" + str(df.loc[i, 'bp1']) + "-" + df.loc[i, 'chromosome2'] + ":" + str(df.loc[i, 'bp2'])
         else:
-            chrom, bp1, bp2, allele_frequency = (0,0,0,0)
+            options.region = df.loc[i, 'position']
 
-        df.loc[i, 'alf2'] = allele_frequency
+        bp1, bp2, af, sv_type, integration = worker(options)
+
+        if integration:
+            intstring = filter(None, integration)
+            intstring = '; '.join(intstring)
+            if df.loc[i, 'notes']:
+                df.loc[i, 'notes'] = intstring + "; " + df.loc[i, 'notes']
+            else: df.loc[i, 'notes'] = intstring
+
+
+        df.loc[i, 'alf2'] = af
         df.loc[i, 'bp1_c'] = bp1
         df.loc[i, 'bp2_c'] = bp2
+        df.loc[i, 'SVtpye'] = sv_type
 
     df = df.drop(['bam', 'normal_bam', 'tumour_purity', 'guess', 'sample'], axis=1)
     df.to_csv(outfile, sep="\t", index=False)
