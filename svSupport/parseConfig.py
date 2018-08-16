@@ -30,7 +30,7 @@ def parse_config(options):
         else:
             options.region = df.loc[i, 'position']
 
-        bp1, bp2, af, sv_type, notes = worker(options)
+        bp1, bp2, af, sv_type, configuration, notes = worker(options)
 
         if notes:
             nlist = filter(None, notes)
@@ -46,6 +46,7 @@ def parse_config(options):
         df.loc[i, 'bp1_c'] = bp1
         df.loc[i, 'bp2_c'] = bp2
         df.loc[i, 'SVtpye'] = sv_type
+        df.loc[i, 'configuration2'] = configuration
         if af == 0:
             df.loc[i, 'T/F'] = 'F'
 

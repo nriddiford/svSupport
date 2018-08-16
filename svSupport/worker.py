@@ -62,7 +62,7 @@ def worker(options):
         allele_frequency, adj_ratio = af.read_depth_af()
         cnv_type = classify_cnv(chrom1, adj_ratio)
 
-        return bp1, bp2, allele_frequency, cnv_type, None
+        return bp1, bp2, allele_frequency, cnv_type, '-', None
 
     bp_regions, slop = get_regions(bam_in, chrom1, bp1, chrom2, bp2, out_dir, options)
 
@@ -82,16 +82,21 @@ def worker(options):
     total_support = len(set(supporting))
     total_oppose = len(set(opposing))
 
-    if chrom1 == chrom2:
-        sv_type = classify_sv(bp1_sig, bp2_sig)
+    notes = []
+    if bp1_sig and bp2_sig:
+        if chrom1 == chrom2:
+            sv_type, configuration = classify_sv(bp1_sig, bp2_sig)
+        else:
+            sv_type, configuration = 'TRA', '-'
+        print("* Variant classified as %s") % (sv_type)
     else:
-        sv_type = 'TRA'
-
-    print("* Variant classified as %s") % (sv_type)
+        "Read signatire not found at one of the two breakpoints - unable to classify this variant"
+        sv_type, configuration = '-', '-'
+        notes.append("Missing bp sig")
 
     print("* Found %s reads in support of variant" % total_support)
     print("* Found %s reads opposing variant" % total_oppose)
-    notes = []
+
     if total_support == 0:
         print "No support found for variant"
         notes.append("No supporting reads")
@@ -119,7 +124,7 @@ def worker(options):
     if not any(notes):
         notes = None
 
-    return bp1, bp2, allele_frequency, sv_type, notes
+    return bp1, bp2, allele_frequency, sv_type, configuration, notes
 
 
 def assessIntegration(alien, te, bp_number):

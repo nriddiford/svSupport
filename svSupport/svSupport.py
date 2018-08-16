@@ -31,7 +31,6 @@ def main():
     if options.in_file and options.region:
         try:
             worker(options)
-            # return (chrom, bp1, bp2, allele_frequency)
         except IOError as err:
             sys.stderr.write("IOError " + str(err) + "\n");
             return
