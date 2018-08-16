@@ -21,6 +21,12 @@ def get_args():
                            "on read depth",
                       metavar="FILE")
 
+    parser.add_option("--chromosomes",
+                      dest="chromfile",
+                      action="store",
+                      help="A file listing chromosome names to consider for normal mapping",
+                      metavar="FILE")
+
     parser.add_option("-p",
                       "--purity",
                       dest="purity",
@@ -35,13 +41,21 @@ def get_args():
                       help="Look for bps if position not exact " +
                            "[Default: False]")
 
+    parser.add_option("-s",
+                      "--slop",
+                      dest="slop",
+                      action="store",
+                      type="int",
+                      help="Explicitly set the distance from breakpoints " +
+                           "to consider as informative for SV")
+
     parser.add_option("-l",
                       "--loci",
                       dest="region",
                       action="store",
                       help="The chromosome and breakpoints for a " +
                            "structural variant in the format: " +
-                           "'chrom:bp_1-bp_2'")
+                           "'chrom:bp_1-bp_2' or 'chrom1:bp_1-chrom2:bp_2")
 
     parser.add_option("-o",
                       "--out_dir",
@@ -82,7 +96,8 @@ def get_args():
                       help="Guess type of SV for read searching")
 
     parser.set_defaults(out_dir='out',
-                        purity=1)
+                        purity=1,
+                        chromfile='chroms.txt')
 
     options, args = parser.parse_args()
 
