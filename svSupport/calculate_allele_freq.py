@@ -25,18 +25,16 @@ class AlleleFrequency(object):
             adjusted_oppose = 0
             print("Not sure if we should be here ...")
 
-        # print("Tumour purity set to %s" % p)
-
         allele_frequency = round(float(total_support)/(float(total_support)+float(total_oppose)), 2)
+
         if p == 1:
             adj_allele_frequency = allele_frequency
         else:
             adj_allele_frequency = float(total_support/( total_support + adjusted_oppose ))
 
         adj_allele_frequency = round(adj_allele_frequency, 2)
+        print("* Allele frequency adjusted from %s to %s" % (allele_frequency, adj_allele_frequency))
 
-        print("Unadjusted allele frequency = %s" % allele_frequency)
-        print("Adjusted allele frequency = %s" % adj_allele_frequency)
         return(adj_allele_frequency)
 
 
@@ -47,16 +45,15 @@ class AlleleFrequency(object):
         c = self.chrom
 
         su = abs(n - t)
-        print("Supporting reads = %s (%s-%s)") % (su, n, t)
+        # print("Supporting reads = %s (%s-%s)") % (su, n, t)
         op = abs(n - su)
-        print("Opposing reads = %s (%s-%s)") % (op, n, su)
+        # print("Opposing reads = %s (%s-%s)") % (op, n, su)
 
         r1 = round((t/n), 2)
-        print("* read depth ratio = %s " % r1)
         af = su/(op+su)
 
         adjop = (op * p) + 0.01
-        print("Adjusting op reads for tp: %s = %s (%s*%s)") % (p, adjop, op, p)
+        # print("Adjusting op reads for tp: %s = %s (%s*%s)") % (p, adjop, op, p)
 
         adjaf = su/(su+adjop)
         # print("%s / (%s + %s)") % (su, adjop, su)
@@ -72,11 +69,12 @@ class AlleleFrequency(object):
             adjaf = round(adjaf, 2)
             af = round(af, 2)
 
+        print("* Adjusted read depth ratio = %s " % r2)
+
         log2_rd_ratio = round(math.log(r2, 2), 2)
 
         print("* Log2, purity-adjusted read depth ratio = %s " % log2_rd_ratio )
 
         print
-        print("* allele frequency = %s " % af)
-        print("* Purity-adjusted allele frequency = %s " % adjaf)
+        print("* Allele frequency adjusted from %s to %s" % (af, adjaf))
         return(adjaf, r2)
