@@ -3,7 +3,7 @@ from collections import defaultdict
 import re, os
 
 
-def get_reads(bp_regions, bp_number, chrom, bp, chrom2, bp2, options, seen_reads, chroms, supporting, opposing):
+def get_reads(bp_regions, bp_number, chrom, bp, bp2, options, seen_reads, chroms, supporting, opposing):
     """Get reads supporting a breakpoint and write both discordant and clipped supporting reads.
        Count the evidence supporting different types of breakpoint arrangements and return the one
        with most support:
@@ -22,7 +22,7 @@ def get_reads(bp_regions, bp_number, chrom, bp, chrom2, bp2, options, seen_reads
 
     samfile = pysam.Samfile(bp_regions, "rb")
     printmate = defaultdict(int)
-
+    duplicates = defaultdict(int)
     bp_sig = defaultdict(int)
 
     if options.debug: print(" * Looking for reads supporting %s" % bp_number)
@@ -33,8 +33,6 @@ def get_reads(bp_regions, bp_number, chrom, bp, chrom2, bp2, options, seen_reads
         start = bp - 500
         stop = bp + 500
 
-        alien_split = 0
-        alien_paired = 0
         te_tagged = defaultdict(int)
         alien_integrant = defaultdict(int)
 
@@ -42,6 +40,12 @@ def get_reads(bp_regions, bp_number, chrom, bp, chrom2, bp2, options, seen_reads
 
             if not read.infer_read_length():
                 """This is a problem - and will skip over reads with no mapped mate (which also have no cigar)"""
+                continue
+
+            dupkey = '_'.join(map(str, [read.reference_start, read.reference_end, read.next_reference_start]))
+            duplicates[dupkey] += 1
+
+            if read.is_duplicate or duplicates[dupkey] > 1:
                 continue
 
             if read.is_reverse:
@@ -78,6 +82,15 @@ def get_reads(bp_regions, bp_number, chrom, bp, chrom2, bp2, options, seen_reads
     return clipped_out, disc_out, opposing_reads, alien_integrant, te_tagged, bp_sig, seen_reads, supporting, opposing
 
 
+def skipDups(read, duplicates, dupkey):
+    if read.is_duplicate:
+        return True
+    elif duplicates[dupkey] > 1:
+        return True
+    return False
+
+
+
 def getOpposing(read, bp, bp_number, printmate):
     bpID = None
 
@@ -107,10 +120,12 @@ def disc_reads(read, bp2, bp_sig, bp_number, direction, options, seen_reads):
 
     bpID = None
 
-    read_key = '_'.join([read.query_name, str(read.reference_start)])
-    seen_reads[read_key] += 1
+    dupkey = '_'.join(map(str, [read.reference_start, read.reference_end, read.next_reference_start]))
 
-    if read.is_duplicate or seen_reads[read_key] > 1:
+    # read_key = '_'.join([read.query_name, str(read.reference_start)])
+    seen_reads[dupkey] += 1
+
+    if seen_reads[dupkey] > 1:
         return read, bp_sig, None, seen_reads
 
     if not read.is_proper_pair and (abs(read.next_reference_start - bp2) <= 350):
