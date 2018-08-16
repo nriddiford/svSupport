@@ -1,11 +1,15 @@
 import os
 import pandas as pd
 from worker import worker
+from merge_bams import merge_bams
+import ntpath
 
 
 def parse_config(options):
     print("\nExtracting arguments from config file: %s" % options.config)
-    base_name = (os.path.splitext(options.config)[0])
+    base_name = ntpath.basename(options.config)
+
+    # base_name = (os.path.splitext()[0])
     if not options.variants_out:
         sample = base_name.split('_')[0]
         outfile = sample + '_svSupport.txt'
@@ -35,11 +39,35 @@ def parse_config(options):
                 df.loc[i, 'notes'] = intstring + "; " + df.loc[i, 'notes']
             else: df.loc[i, 'notes'] = intstring
 
-
         df.loc[i, 'alf2'] = af
         df.loc[i, 'bp1_c'] = bp1
         df.loc[i, 'bp2_c'] = bp2
         df.loc[i, 'SVtpye'] = sv_type
 
+    mergeAll(options, sample)
+
     df = df.drop(['bam', 'normal_bam', 'tumour_purity', 'guess', 'sample'], axis=1)
     df.to_csv(outfile, sep="\t", index=False)
+
+
+def mergeAll(options, sample):
+    su = []
+    op = []
+    reg = []
+
+    for file in os.listdir(options.out_dir):
+        if file.endswith("supporting.s.bam"):
+            su.append(os.path.join(options.out_dir, file))
+        elif file.endswith("opposing.s.bam"):
+            op.append(os.path.join(options.out_dir, file))
+        elif file.endswith("regions.s.bam"):
+            reg.append(os.path.join(options.out_dir, file))
+
+    allsup = os.path.join(options.out_dir, sample + '_supporting.bam')
+    allop = os.path.join(options.out_dir, sample + '_opposing.bam')
+    allregions = os.path.join(options.out_dir, sample + '_regions.bam')
+
+    merge_bams(allsup, options.out_dir, su)
+    merge_bams(allop, options.out_dir, op)
+    merge_bams(allregions, options.out_dir, reg)
+

@@ -48,6 +48,7 @@ def index_bam(bam):
     except:
         print("Can't index %s" % bam)
 
+
 def rm_bams(bams):
     for b in bams:
         try:

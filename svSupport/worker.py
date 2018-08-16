@@ -46,16 +46,12 @@ def worker(options):
     if debug:
         print_options(bam_in, normal, chrom1, bp1, bp2, find_bps, debug, options.test, out_dir)
 
+    if options.config: print options
+
     chroms = []
     if options.chromfile:
         chroms = getChroms(options)
         print(" - Marking SV reads that don't map to one of the following chromosomes: %s") % (chroms)
-
-
-    if options.config:
-        # print("python svSupport.py -i %s -n %s -l %s:%s-%s -p %s -f %s -o %s -v %s") % (
-        # bam_in, normal, chrom1, bp1, bp2, purity, find_bps, out_dir, options.variants_out)
-        print options
 
     if normal:
         print("* Calculating allele frequency from read depth file: %s" % bam_in)
@@ -99,8 +95,6 @@ def worker(options):
     af = AlleleFrequency(total_oppose, total_support, purity, chrom1)
     allele_frequency = af.read_support_af()
 
-
-
     # clio = os.path.join(out_dir, 'clipped_reads.bam')
     # disco = os.path.join(out_dir, 'discordant_reads.bam')
     # merge_bams(disco, out_dir, [bp1_disc_bam, bp2_disc_bam])
@@ -108,7 +102,7 @@ def worker(options):
     svID = '_'.join(map(str, [chrom1, bp1, chrom2, bp2]))
 
     suoout = os.path.join(out_dir, svID + '_supporting.bam')
-    opout = os.path.join(out_dir, svID + '_opposing_reads.bam')
+    opout = os.path.join(out_dir, svID + '_opposing.bam')
 
     merge_bams(suoout, out_dir, [bp1_clipped_bam, bp2_clipped_bam, bp1_disc_bam, bp2_disc_bam])
     merge_bams(opout, out_dir, [bp1_opposing_reads, bp2_opposing_reads])
