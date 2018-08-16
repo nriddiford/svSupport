@@ -1,26 +1,3 @@
-import re
-def classify_sv1(bp1_best_guess, bp2_best_guess):
-    if bp1_best_guess == 'F_bp1' and bp2_best_guess == 'bp2_R':
-        sv_type = 'Deletion'
-        read_sig = "__\ bp1 ... bp2 /__"
-    elif bp1_best_guess == 'F_bp1' and bp2_best_guess == 'F_bp2':
-        sv_type = 'Inversion type I'
-        read_sig = "__\ bp1 ... __\ bp2"
-    elif bp1_best_guess == 'bp1_R' and bp2_best_guess == 'bp2_R':
-        sv_type = "Inversion type II"
-        read_sig = "bp1 /__ ... bp2 /__"
-    elif bp1_best_guess == 'bp1_R' and bp2_best_guess == 'F_bp2':
-        sv_type = "Tandem duplication"
-        read_sig = "bp1 /__ ... __\ bp2"
-        bp1_best_guess, bp2_best_guess = 'F_bp1', 'bp2_R'
-    else:
-        sv_type = "Unknown - assuming deletion"
-        read_sig = "__\ bp1 ... bp2 /__"
-        bp1_best_guess, bp2_best_guess = 'F_bp1', 'bp2_R'
-
-    return(bp1_best_guess, bp2_best_guess, sv_type, read_sig)
-
-
 
 def classify_sv(bp1_sig, bp2_sig):
 
@@ -30,24 +7,21 @@ def classify_sv(bp1_sig, bp2_sig):
                 print "read before breakpoint 1"
                 if 'bp2_' in k2:
                     print "read after breakpoint 2"
-                    return "DEL"
+                    return 'DEL', '3to5'
                 elif '_bp2' in k2:
                     print "read before breakpoint 2"
-                    return "3-3_INV"
+                    return 'BND', '3to3'
             elif 'bp1_' in k1:
                 print "read after breakpoint 1"
                 if 'bp2_' in k2:
                     print "read after breakpoint 2"
-                    return "5-5_INV"
+                    return 'BND', '5to5'
                 elif '_bp2' in k2:
                     print "read before breakpoint 2"
-                    return "TANDUP"
+                    return 'TANDUP', '5to3'
 
             print "%s: %s" % (k1, bp1_sig[k1])
             print "%s: %s" % (k2, bp2_sig[k2])
-
-
-
 
 
 def classify_cnv(chrom, rdr):
