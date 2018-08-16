@@ -30,19 +30,26 @@ def parse_config(options):
         else:
             options.region = df.loc[i, 'position']
 
-        bp1, bp2, af, sv_type, integration = worker(options)
+        bp1, bp2, af, sv_type, notes = worker(options)
 
-        if integration:
-            intstring = filter(None, integration)
-            intstring = '; '.join(intstring)
+        if notes:
+            nlist = filter(None, notes)
+            nstring = '; '.join(nlist)
             if df.loc[i, 'notes']:
-                df.loc[i, 'notes'] = intstring + "; " + df.loc[i, 'notes']
-            else: df.loc[i, 'notes'] = intstring
+                df.loc[i, 'notes'] = nstring + "; " + df.loc[i, 'notes']
+            else: df.loc[i, 'notes'] = nstring
+
+            if 'low read support' in nlist:
+                df.loc[i, 'T/F'] = 'F'
 
         df.loc[i, 'alf2'] = af
         df.loc[i, 'bp1_c'] = bp1
         df.loc[i, 'bp2_c'] = bp2
         df.loc[i, 'SVtpye'] = sv_type
+        if af == 0:
+            df.loc[i, 'T/F'] = 'F'
+
+
 
     mergeAll(options, sample)
 
@@ -63,11 +70,12 @@ def mergeAll(options, sample):
         elif file.endswith("regions.s.bam"):
             reg.append(os.path.join(options.out_dir, file))
 
-    allsup = os.path.join(options.out_dir, sample + '_supporting.bam')
-    allop = os.path.join(options.out_dir, sample + '_opposing.bam')
-    allregions = os.path.join(options.out_dir, sample + '_regions.bam')
+    if(len(su)>1):
+        allsup = os.path.join(options.out_dir, sample + '_supporting.bam')
+        allop = os.path.join(options.out_dir, sample + '_opposing.bam')
+        allregions = os.path.join(options.out_dir, sample + '_regions.bam')
 
-    merge_bams(allsup, options.out_dir, su)
-    merge_bams(allop, options.out_dir, op)
-    merge_bams(allregions, options.out_dir, reg)
+        merge_bams(allsup, options.out_dir, su)
+        merge_bams(allop, options.out_dir, op)
+        merge_bams(allregions, options.out_dir, reg)
 

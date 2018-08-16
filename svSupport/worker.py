@@ -76,8 +76,8 @@ def worker(options):
     supporting = []
     opposing = []
 
-    bp1_clipped_bam, bp1_disc_bam, bp1_opposing_reads, alien_integrant1, te_tagged1, bp1_sig, seen_reads, supporting, opposing = get_reads(bp_regions, 'bp1', chrom1, bp1, chrom2, bp2, options, seen_reads, chroms, supporting, opposing)
-    bp2_clipped_bam, bp2_disc_bam, bp2_opposing_reads, alien_integrant2, te_tagged2, bp2_sig, seen_reads, supporting, opposing = get_reads(bp_regions, 'bp2', chrom2, bp2, chrom1, bp1, options, seen_reads, chroms, supporting, opposing)
+    bp1_clipped_bam, bp1_disc_bam, bp1_opposing_reads, alien_integrant1, te_tagged1, bp1_sig, seen_reads, supporting, opposing = get_reads(bp_regions, 'bp1', chrom1, bp1, bp2, options, seen_reads, chroms, supporting, opposing)
+    bp2_clipped_bam, bp2_disc_bam, bp2_opposing_reads, alien_integrant2, te_tagged2, bp2_sig, seen_reads, supporting, opposing = get_reads(bp_regions, 'bp2', chrom2, bp2, bp1, options, seen_reads, chroms, supporting, opposing)
 
     total_support = len(set(supporting))
     total_oppose = len(set(opposing))
@@ -91,13 +91,18 @@ def worker(options):
 
     print("* Found %s reads in support of variant" % total_support)
     print("* Found %s reads opposing variant" % total_oppose)
-
-    af = AlleleFrequency(total_oppose, total_support, purity, chrom1)
-    allele_frequency = af.read_support_af()
-
-    # clio = os.path.join(out_dir, 'clipped_reads.bam')
-    # disco = os.path.join(out_dir, 'discordant_reads.bam')
-    # merge_bams(disco, out_dir, [bp1_disc_bam, bp2_disc_bam])
+    notes = []
+    if total_support == 0:
+        print "No support found for variant"
+        notes.append("No supporting reads")
+        allele_frequency = 0
+    elif total_support < 4:
+        print "Only found %s reads supporting variant" % total_support
+        notes.append("low read support=" + str(total_support))
+        allele_frequency = 0
+    else:
+        af = AlleleFrequency(total_oppose, total_support, purity, chrom1)
+        allele_frequency = af.read_support_af()
 
     svID = '_'.join(map(str, [chrom1, bp1, chrom2, bp2]))
 
@@ -109,12 +114,12 @@ def worker(options):
 
     alien1, te1 = assessIntegration(alien_integrant1, te_tagged1, 'bp1')
     alien2, te2 = assessIntegration(alien_integrant2, te_tagged2, 'bp2')
-    integrants = [alien1, te1, alien2, te2]
+    notes = [', '.join(notes), alien1, te1, alien2, te2]
 
-    if not any(integrants):
-        integrants = None
+    if not any(notes):
+        notes = None
 
-    return bp1, bp2, allele_frequency, sv_type, integrants
+    return bp1, bp2, allele_frequency, sv_type, notes
 
 
 def assessIntegration(alien, te, bp_number):
