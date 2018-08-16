@@ -78,8 +78,10 @@ def getbam(bam_dir, sample, bamgroup, group, t_id):
         normal_bam = group + "-" + str(n_id) + '.tagged.filt.SC.RG.bam'
         sample_bam = group + "-" + str(t_id) + '.tagged.filt.SC.RG.bam'
     elif sample == 'B241R41-1':
+        sample_bam = 'B241R41-1.tagged.filt.SC.RG.bam'
         normal_bam = 'B241R42-1.tagged.filt.SC.RG.bam'
     elif sample == 'B241R41-2':
+        sample_bam = 'B241R41-2.tagged.filt.SC.RG.bam'
         normal_bam = 'B241R42-2.tagged.filt.SC.RG.bam'
     else:
         n_id = int(t_id) + 1
