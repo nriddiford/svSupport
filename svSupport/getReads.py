@@ -49,7 +49,7 @@ def get_reads(bp_regions, bp_number, chrom, chrom2, bp, bp2, options, seen_reads
                     """
                 continue
 
-            dupObj = TrackReads(read, chrom, bp, chrom2, bp2, duplicates)
+            dupObj = TrackReads(read, chrom, chrom2, duplicates)
             duplicates, is_dup = dupObj.check_for_standard_dup()
 
             if is_dup:
@@ -89,7 +89,7 @@ def get_reads(bp_regions, bp_number, chrom, chrom2, bp, bp2, options, seen_reads
                 seen_reads.append(readtracker)
 
             if not bpID and not read.query_name in supporting:
-                read, bpID, printmate = getOpposing(read, bp, bp_number, printmate)
+                read, bpID, printmate = getOpposing(read, bp, bp_number, chrom2, printmate)
                 if bpID:
                     op_reads.write(read)
                     opposing.append(read.query_name)
@@ -105,7 +105,7 @@ def get_reads(bp_regions, bp_number, chrom, chrom2, bp, bp2, options, seen_reads
     return clipped_out, disc_out, opposing_reads, alien_integrant, te_tagged, bp_sig, seen_reads, supporting, opposing
 
 
-def getOpposing(read, bp, bp_number, printmate):
+def getOpposing(read, bp, bp_number, chrom2, printmate):
     bpID = None
 
     if printmate[read.query_name] >= 1:
@@ -116,7 +116,7 @@ def getOpposing(read, bp, bp_number, printmate):
         bpID = '_'.join([str(bp_number), 'opposing'])
         tag = ' '.join(['opposing', 'spanning'])
 
-    elif read.reference_end < bp and read.next_reference_start > bp:
+    elif read.reference_end < bp and read.next_reference_start > bp and read.next_reference_name == chrom2:
         bpID = '_'.join([str(bp_number), 'opposing'])
         tag = ' '.join(['opposing', 'pair'])
         printmate[read.query_name] += 1
