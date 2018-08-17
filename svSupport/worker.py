@@ -68,8 +68,8 @@ def worker(options):
 
     if options.find_bps:
         print "Guessing bp"
-        bp1_guess, bp1 = find_breakpoints(bp_regions, chrom1, bp1, 'bp1', options)
-        bp2_guess, bp2 = find_breakpoints(bp_regions, chrom2, bp2, 'bp2', options)
+        bp1_guess, bp1 = find_breakpoints(bp_regions, chrom1, chrom2, bp1, 'bp1', options)
+        bp2_guess, bp2 = find_breakpoints(bp_regions, chrom2, chrom2, bp2, 'bp2', options)
 
     seen_reads = []
 
@@ -100,11 +100,12 @@ def worker(options):
     if total_support == 0:
         print "No support found for variant"
         notes.append("No supporting reads")
-        allele_frequency = 0
+        allele_frequency = '-'
     elif total_support < 4:
         print "Only found %s reads supporting variant" % total_support
         notes.append("low read support=" + str(total_support))
-        allele_frequency = 0
+        af = AlleleFrequency(total_oppose, total_support, purity, chrom1)
+        allele_frequency = af.read_support_af()
     else:
         af = AlleleFrequency(total_oppose, total_support, purity, chrom1)
         allele_frequency = af.read_support_af()

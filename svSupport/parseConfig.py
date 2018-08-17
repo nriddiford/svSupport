@@ -1,4 +1,4 @@
-import os
+import os, re
 import pandas as pd
 from worker import worker
 from merge_bams import merge_bams
@@ -39,14 +39,18 @@ def parse_config(options):
                 df.loc[i, 'notes'] = nstring + "; " + df.loc[i, 'notes']
             else: df.loc[i, 'notes'] = nstring
 
-            if 'low read support' in nlist:
+            r = re.compile(".*low read support")
+            if filter(r.match, nlist):
                 df.loc[i, 'T/F'] = 'F'
+
+        if not 'zyg' in sv_type:
+            df.loc[i, 'type'] = sv_type
 
         df.loc[i, 'alf2'] = af
         df.loc[i, 'bp1_c'] = bp1
         df.loc[i, 'bp2_c'] = bp2
-        df.loc[i, 'SVtpye'] = sv_type
-        df.loc[i, 'configuration2'] = configuration
+        df.loc[i, 'configuration'] = configuration
+
         if af == 0:
             df.loc[i, 'T/F'] = 'F'
 
