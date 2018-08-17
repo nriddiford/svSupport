@@ -71,13 +71,13 @@ def worker(options):
         bp1_guess, bp1 = find_breakpoints(bp_regions, chrom1, bp1, 'bp1', options)
         bp2_guess, bp2 = find_breakpoints(bp_regions, chrom2, bp2, 'bp2', options)
 
-    seen_reads = defaultdict(int)
+    seen_reads = []
 
     supporting = []
     opposing = []
 
-    bp1_clipped_bam, bp1_disc_bam, bp1_opposing_reads, alien_integrant1, te_tagged1, bp1_sig, seen_reads, supporting, opposing = get_reads(bp_regions, 'bp1', chrom1, bp1, bp2, options, seen_reads, chroms, supporting, opposing)
-    bp2_clipped_bam, bp2_disc_bam, bp2_opposing_reads, alien_integrant2, te_tagged2, bp2_sig, seen_reads, supporting, opposing = get_reads(bp_regions, 'bp2', chrom2, bp2, bp1, options, seen_reads, chroms, supporting, opposing)
+    bp1_clipped_bam, bp1_disc_bam, bp1_opposing_reads, alien_integrant1, te_tagged1, bp1_sig, seen_reads, supporting, opposing = get_reads(bp_regions, 'bp1', chrom1, chrom2, bp1, bp2, options, seen_reads, chroms, supporting, opposing)
+    bp2_clipped_bam, bp2_disc_bam, bp2_opposing_reads, alien_integrant2, te_tagged2, bp2_sig, seen_reads, supporting, opposing = get_reads(bp_regions, 'bp2', chrom2, chrom1, bp2, bp1, options, seen_reads, chroms, supporting, opposing)
 
     total_support = len(set(supporting))
     total_oppose = len(set(opposing))
