@@ -1,9 +1,10 @@
 import pysam
 from collections import defaultdict
+from trackReads import TrackReads
 import re, os
 
 
-def get_reads(bp_regions, bp_number, chrom, bp, bp2, options, seen_reads, chroms, supporting, opposing):
+def get_reads(bp_regions, bp_number, chrom, chrom2, bp, bp2, options, seen_reads, chroms, supporting, opposing):
     """Get reads supporting a breakpoint and write both discordant and clipped supporting reads.
        Count the evidence supporting different types of breakpoint arrangements and return the one
        with most support:
@@ -39,13 +40,29 @@ def get_reads(bp_regions, bp_number, chrom, bp, bp2, options, seen_reads, chroms
         for read in samfile.fetch(chrom, start, stop):
 
             if not read.infer_read_length():
-                """This is a problem - and will skip over reads with no mapped mate (which also have no cigar)"""
+                """This is a problem - and will skip over reads with no mapped mate (which also have no cigar) - try:
+                
+                bf = pysam.AlignemFile(fname, "rb")
+                for r in bf.fetch(until_eof=True):
+                    if r.is_unmapped:
+                    print ("read is unmapped")
+                    """
                 continue
 
-            dupkey = '_'.join(map(str, [read.reference_start, read.reference_end, read.next_reference_start]))
-            duplicates[dupkey] += 1
+            dupObj = TrackReads(read, chrom, bp, chrom2, bp2, duplicates)
+            duplicates, is_dup = dupObj.check_for_standard_dup()
 
-            if read.is_duplicate or duplicates[dupkey] > 1:
+            if is_dup:
+                print "Standard dup: %s", bp_number, read.query_name, read.reference_start
+                continue
+            duplicates, is_dup = dupObj.check_for_disc_dup()
+            if is_dup:
+                print "Discordant dup: %s", bp_number, read.query_name, read.reference_start
+                continue
+
+            duplicates, is_dup = dupObj.check_for_clipped_dup()
+            if is_dup:
+                print "Clipped dup: %s", bp_number, read.query_name, read.reference_start
                 continue
 
             if read.is_reverse:
@@ -55,15 +72,21 @@ def get_reads(bp_regions, bp_number, chrom, bp, bp2, options, seen_reads, chroms
 
             read, bp_sig, split_reads, bpID = getClipped(read, bp, direction, bp_number, bp_sig, split_reads, options)
 
-            if bpID:
+            readtracker = '_'.join(map(str, [read.query_name, read.reference_start]))
+
+
+            if bpID and readtracker not in seen_reads:
                 bpReads.write(read)
                 supporting.append(read.query_name)
+                seen_reads.append(readtracker)
 
-            read, bp_sig, bpID, seen_reads = disc_reads(read, bp2, bp_sig, bp_number, direction, options, seen_reads)
 
-            if bpID:
+            read, bp_sig, bpID = disc_reads(read, bp2, bp_sig, bp_number, direction, options, chrom2)
+
+            if bpID and readtracker not in seen_reads:
                 discReads.write(read)
                 supporting.append(read.query_name)
+                seen_reads.append(readtracker)
 
             if not bpID and not read.query_name in supporting:
                 read, bpID, printmate = getOpposing(read, bp, bp_number, printmate)
@@ -73,22 +96,13 @@ def get_reads(bp_regions, bp_number, chrom, bp, bp2, options, seen_reads, chroms
 
             if options.chromfile:
                 alien_integrant = getAlienDNA(bpID, read, alien_integrant, chroms, bp_number, direction, options)
-            te_tagged = getTaggedReads(bpID, read, te_tagged, bp_number, bp, direction, options)
+            te_tagged = getTaggedReads(bpID, read, te_tagged, bp, direction, options)
 
     pysam.index(clipped_out)
     pysam.index(disc_out)
     pysam.index(opposing_reads)
 
     return clipped_out, disc_out, opposing_reads, alien_integrant, te_tagged, bp_sig, seen_reads, supporting, opposing
-
-
-def skipDups(read, duplicates, dupkey):
-    if read.is_duplicate:
-        return True
-    elif duplicates[dupkey] > 1:
-        return True
-    return False
-
 
 
 def getOpposing(read, bp, bp_number, printmate):
@@ -113,22 +127,14 @@ def getOpposing(read, bp, bp_number, printmate):
     return read, bpID, printmate
 
 
-def disc_reads(read, bp2, bp_sig, bp_number, direction, options, seen_reads):
+def disc_reads(read, bp2, bp_sig, bp_number, direction, options, chrom2):
     """Return true if read is both discordant (not read.is_proper_pair)
        and not contained in f/r reads dict. This prevents the same read being counted
        twice in regions that overlap"""
 
     bpID = None
 
-    dupkey = '_'.join(map(str, [read.reference_start, read.reference_end, read.next_reference_start]))
-
-    # read_key = '_'.join([read.query_name, str(read.reference_start)])
-    seen_reads[dupkey] += 1
-
-    if seen_reads[dupkey] > 1:
-        return read, bp_sig, None, seen_reads
-
-    if not read.is_proper_pair and (abs(read.next_reference_start - bp2) <= 350):
+    if not read.is_proper_pair and (abs(read.next_reference_start - bp2) <= 350) and chrom2 == read.next_reference_name:
         if direction == 'r':
             bpID = '_'.join([bp_number, 'r'])
             if options.debug: print("<---- discordant read supports breakpoints %s: %s") % (bp_number, read.query_name)
@@ -141,7 +147,7 @@ def disc_reads(read, bp2, bp_sig, bp_number, direction, options, seen_reads):
         tagRead(read, tag)
         bp_sig[bpID] += 1
 
-    return read, bp_sig, bpID, seen_reads
+    return read, bp_sig, bpID
 
 
 def getAlienDNA(bpID, read, alien_integrant, chroms, bp_number, direction, options):
@@ -166,7 +172,7 @@ def getAlienDNA(bpID, read, alien_integrant, chroms, bp_number, direction, optio
     return alien_integrant
 
 
-def getTaggedReads(bpID, read, te_tagged, bp_number, bp, direction, options):
+def getTaggedReads(bpID, read, te_tagged, bp, direction, options):
     if bpID and read.is_supplementary:
         try:
             sa_te = read.get_tag('AD').split(',')[0]
@@ -180,7 +186,6 @@ def getTaggedReads(bpID, read, te_tagged, bp_number, bp, direction, options):
         te = '_'.join(te.split('_')[1:])
 
         if direction == 'f' and read.reference_start < bp:
-        # if bp_number == 'bp1' and direction == 'f':
             if options.debug: print "foward read has mate in te:", te, read.query_name
             te_tagged[te] += 1
         elif direction == 'r' and read.reference_end > bp:
@@ -199,11 +204,9 @@ def getClipped(read, bp, direction, bp_number, bp_sig, split_reads, options):
        r_bp : <----[x]=====
        bp_r : =====[x]<----
        """
-
     bpID = None
-    # if clipped
-    if re.findall(r'(\d+)[S|H]', read.cigarstring):
 
+    if re.findall(r'(\d+)[S|H]', read.cigarstring):
         # if right-clipped
         if bp == read.reference_end:
             bpID = rightClipped(read, direction, bp_number, options)
