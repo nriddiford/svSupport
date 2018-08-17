@@ -7,7 +7,7 @@ def classify_sv(bp1_sig, bp2_sig):
                 print "read before breakpoint 1"
                 if 'bp2_' in k2:
                     print "read after breakpoint 2"
-                    return 'DEL', '3to5'
+                    return 'DEL', '5to3'
                 elif '_bp2' in k2:
                     print "read before breakpoint 2"
                     return 'BND', '3to3'
@@ -18,7 +18,7 @@ def classify_sv(bp1_sig, bp2_sig):
                     return 'BND', '5to5'
                 elif '_bp2' in k2:
                     print "read before breakpoint 2"
-                    return 'TANDUP', '5to3'
+                    return 'TANDUP', '3to5'
 
             print "%s: %s" % (k1, bp1_sig[k1])
             print "%s: %s" % (k2, bp2_sig[k2])
