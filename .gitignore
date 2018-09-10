@@ -5,4 +5,7 @@ svSupport/__pycache__
 __pycache__/
 svSupport/test/test_out/*
 !.gitignore
-.*
+*_config.txt
+*_svSupport.txt
+data/*
+out/*
