@@ -35,7 +35,6 @@ def find_breakpoints(regions, chrom, chrom2, bp, bp_number, options):
         bp_guess[i] = split_reads
     bp_g = max(bp_guess, key=bp_guess.get)
 
-    print bp_guess
     if bp_guess[bp_g] > bp_guess[bp] and bp_g != bp:
         bp = bp_g
         print("%s adjusted to %s (%s split reads supporting)") % (bp_number, bp_g, bp_guess[bp])
