@@ -53,16 +53,16 @@ def get_reads(bp_regions, bp_number, chrom, chrom2, bp, bp2, options, seen_reads
             duplicates, is_dup = dupObj.check_for_standard_dup()
 
             if is_dup:
-                print "Standard dup: %s", bp_number, read.query_name, read.reference_start
+                if options.debug: print "Standard dup: %s", bp_number, read.query_name, read.reference_start
                 continue
             duplicates, is_dup = dupObj.check_for_disc_dup()
             if is_dup:
-                print "Discordant dup: %s", bp_number, read.query_name, read.reference_start
+                if options.debug: print "Discordant dup: %s", bp_number, read.query_name, read.reference_start
                 continue
 
             duplicates, is_dup = dupObj.check_for_clipped_dup()
             if is_dup:
-                print "Clipped dup: %s", bp_number, read.query_name, read.reference_start
+                if options.debug: print "Clipped dup: %s", bp_number, read.query_name, read.reference_start
                 continue
 
             if read.is_reverse:
