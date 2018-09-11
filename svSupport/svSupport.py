@@ -32,7 +32,7 @@ def main():
         try:
             worker(options)
         except IOError as err:
-            sys.stderr.write("IOError " + str(err) + "\n");
+            sys.stderr.write("IOError " + str(err) + "\n")
             return
 
 

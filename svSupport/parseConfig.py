@@ -9,7 +9,6 @@ def parse_config(options):
     print("\nExtracting arguments from config file: %s" % options.config)
     base_name = ntpath.basename(options.config)
 
-    # base_name = (os.path.splitext()[0])
     if not options.variants_out:
         sample = base_name.split('_')[0]
         outfile = sample + '_svSupport.txt'
@@ -46,19 +45,18 @@ def parse_config(options):
         if not 'zyg' in sv_type:
             df.loc[i, 'type'] = sv_type
 
-        df.loc[i, 'alf2'] = af
-        df.loc[i, 'bp1_c'] = bp1
-        df.loc[i, 'bp2_c'] = bp2
+        df.loc[i, 'allele_frequency'] = af
+        df.loc[i, 'bp1'] = bp1
+        df.loc[i, 'bp2'] = bp2
         df.loc[i, 'configuration'] = configuration
 
         if af == 0:
             df.loc[i, 'T/F'] = 'F'
 
-
-
     mergeAll(options, sample)
 
     df = df.drop(['bam', 'normal_bam', 'tumour_purity', 'guess', 'sample'], axis=1)
+    df.sort_values(['chromosome1', 'bp1', 'chromosome2', 'bp2'])
     df.to_csv(outfile, sep="\t", index=False)
 
 
@@ -83,4 +81,3 @@ def mergeAll(options, sample):
         merge_bams(allsup, options.out_dir, su)
         merge_bams(allop, options.out_dir, op)
         merge_bams(allregions, options.out_dir, reg)
-
