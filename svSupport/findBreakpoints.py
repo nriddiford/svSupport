@@ -3,9 +3,15 @@ from getReads import getClipped
 from collections import defaultdict
 from trackReads import TrackReads
 
-def find_breakpoints(regions, chrom, chrom2, bp, bp_number, options, window_size):
+def find_breakpoints(regions, chrom, chrom2, bp, bp_number, options, cn):
     samfile = pysam.Samfile(regions, "rb")
     bp_guess = {}
+
+    if cn:
+        window_size = 2000
+    else:
+        window_size = 10
+
     print("Looking for reads +/- %s bps surrounding %s") % (window_size, bp_number)
 
     for i in range(bp - window_size, bp + window_size):
@@ -13,7 +19,7 @@ def find_breakpoints(regions, chrom, chrom2, bp, bp_number, options, window_size
         readSig = defaultdict(int)
         duplicates = defaultdict(int)
 
-        for read in samfile.fetch(chrom, bp - window_size, bp + window_size):
+        for read in samfile.fetch(chrom, i - 5, i + 5):
             if not read.infer_read_length():
                 """This is a problem - and will skip over reads with no mapped mate (which also have no cigar)"""
                 continue
@@ -36,10 +42,13 @@ def find_breakpoints(regions, chrom, chrom2, bp, bp_number, options, window_size
         bp_guess[i] = split_reads
     bp_g = max(bp_guess, key=bp_guess.get)
 
-    print(bp_guess)
+    if cn and bp_guess[bp_g] > 3:
+        bp = bp_g
+        print bp_guess[bp_g]
+        print("%s adjusted to %s (%s split reads supporting)") % (bp_number, bp_g, bp_guess[bp])
 
-    if bp_guess[bp_g] > bp_guess[bp] and bp_g != bp:
+    elif not cn and bp_guess[bp_g] > bp_guess[bp] and bp_g != bp:
         bp = bp_g
         print("%s adjusted to %s (%s split reads supporting)") % (bp_number, bp_g, bp_guess[bp])
 
-    return bp_guess, bp
+    return bp
