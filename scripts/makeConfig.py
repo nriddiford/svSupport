@@ -29,10 +29,11 @@ def makeConfig(options):
         df = pd.read_csv(variants, delimiter="\t")
 
         for i in df.index:
-            df.loc[i, 'guess'], df.loc[i, 'normal_bam']  = guess(df.loc[i, 'split_reads'], df.loc[i, 'type'], normal_bam)
+            df.loc[i, 'guess'], df.loc[i, 'normal_bam'] = guess(df.loc[i, 'split_reads'], df.loc[i, 'type'], normal_bam)
             df.loc[i, 'sample'] = sample
             df.loc[i, 'bam'] = sample_bam
             df.loc[i, 'tumour_purity'] = purity
+
 
         df.to_csv(options.outfile, sep="\t", index=False)
 
@@ -40,10 +41,10 @@ def makeConfig(options):
 def guess(sr, t, nbam):
     if sr == '-':
         return '', nbam
-    elif t != 'DEL':
-        return 'T', ''
+    # else t != 'DEL':
+    #     return 'T', ''
     else:
-        return '',''
+        return 'T',''
 
 
 def getGroup(sample):
