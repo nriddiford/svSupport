@@ -56,7 +56,7 @@ def worker(options):
     if normal:
         print("* Calculating allele frequency from read depth file: %s" % bam_in)
 
-        opposing, supporting, adj_ratio = get_depth(bam_in, normal, chrom1, bp1, bp2)
+        opposing, supporting, adj_ratio = get_depth(bam_in, normal, chrom1, bp1, bp2, chroms)
 
         af = AlleleFrequency(opposing, supporting, purity, chrom1)
         allele_frequency, adj_ratio = af.read_depth_af()
