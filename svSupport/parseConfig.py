@@ -49,6 +49,11 @@ def parse_config(options):
         df.loc[i, 'bp1'] = bp1
         df.loc[i, 'bp2'] = bp2
         df.loc[i, 'configuration'] = configuration
+        if df.loc[i, 'chromosome1'] != df.loc[i, 'chromosome2']:
+            df.loc[i, 'position'] = df.loc[i, 'chromosome1'] + ":" + str(bp1) + " " + df.loc[i, 'chromosome2'] + ":" + str(bp2)
+        else:
+            df.loc[i, 'position'] = df.loc[i, 'chromosome1'] + ":" + str(bp1) + "-" + str(bp2)
+
 
         if af == 0:
             df.loc[i, 'T/F'] = 'F'
