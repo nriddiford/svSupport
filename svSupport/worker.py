@@ -53,23 +53,27 @@ def worker(options):
         chroms = getChroms(options)
         print(" - Marking SV reads that don't map to one of the following chromosomes: %s") % (chroms)
 
+    bp_regions, slop = get_regions(bam_in, chrom1, bp1, chrom2, bp2, out_dir, options)
+
     if normal:
+        if options.find_bps:
+            print "Guessing bp"
+            bp1_guess, bp1 = find_breakpoints(bp_regions, chrom1, chrom2, bp1, 'bp1', options, 1000)
+            bp2_guess, bp2 = find_breakpoints(bp_regions, chrom2, chrom2, bp2, 'bp2', options, 1000)
+
         print("* Calculating allele frequency from read depth file: %s" % bam_in)
-
         opposing, supporting, adj_ratio = get_depth(bam_in, normal, chrom1, bp1, bp2, chroms)
-
         af = AlleleFrequency(opposing, supporting, purity, chrom1)
         allele_frequency, adj_ratio = af.read_depth_af()
         cnv_type = classify_cnv(chrom1, adj_ratio)
 
         return bp1, bp2, allele_frequency, cnv_type, '-', None
 
-    bp_regions, slop = get_regions(bam_in, chrom1, bp1, chrom2, bp2, out_dir, options)
 
     if options.find_bps:
         print "Guessing bp"
-        bp1_guess, bp1 = find_breakpoints(bp_regions, chrom1, chrom2, bp1, 'bp1', options)
-        bp2_guess, bp2 = find_breakpoints(bp_regions, chrom2, chrom2, bp2, 'bp2', options)
+        bp1_guess, bp1 = find_breakpoints(bp_regions, chrom1, chrom2, bp1, 'bp1', options, 10)
+        bp2_guess, bp2 = find_breakpoints(bp_regions, chrom2, chrom2, bp2, 'bp2', options, 10)
 
     seen_reads = []
 
