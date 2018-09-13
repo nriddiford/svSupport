@@ -18,15 +18,6 @@ cd svSupport
 pip install .
 ```
 
-### Run on test data
 
-`svSupport -t`
 
-* Bam file: ../data/test.bam
-* Chrom: 3L
-* bp1: 9892365
-* bp2: 9894889
-* slop: 500
-* search_bps: 0
-* debug
-* Out dir: test/test_out
+### Find support for
