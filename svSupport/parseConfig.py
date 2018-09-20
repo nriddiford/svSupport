@@ -21,13 +21,15 @@ def parse_config(options):
         options.in_file = df.loc[i, 'bam']
         options.purity = float(df.loc[i, 'tumour_purity'])
         options.normal_bam = df.loc[i, 'normal_bam']
-        options.find_bps = True
         options.guess = df.loc[i, 'guess']
 
         if df.loc[i, 'chromosome1'] != df.loc[i, 'chromosome2']:
             options.region = df.loc[i, 'chromosome1'] + ":" + str(df.loc[i, 'bp1']) + "-" + df.loc[i, 'chromosome2'] + ":" + str(df.loc[i, 'bp2'])
         else:
             options.region = df.loc[i, 'position']
+
+        if df.loc[i, 'T/F'] != 'F':
+            options.find_bps = True
 
         bp1, bp2, af, sv_type, configuration, notes = worker(options)
 
@@ -61,7 +63,7 @@ def parse_config(options):
     mergeAll(options, sample)
 
     df = df.drop(['bam', 'normal_bam', 'tumour_purity', 'guess', 'sample'], axis=1)
-    df.sort_values(['chromosome1', 'bp1', 'chromosome2', 'bp2'])
+    df = df.sort_values(['chromosome1', 'bp1', 'chromosome2', 'bp2'])
     df.to_csv(outfile, sep="\t", index=False)
 
 
