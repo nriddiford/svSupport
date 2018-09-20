@@ -132,7 +132,6 @@ def get_args():
 
     parser.set_defaults(bam_dir = '/Users/Nick_curie/Local_data/bam',
                         outfile = 'data/config.txt',
-                        variants = '/Users/Nick_curie/Desktop/parserTest/filtered2/summary/merged/HUM-1_annotated_SVs.txt',
                         purity_file = '/Users/Nick_curie/Desktop/script_test/svSupport/data/tumour_purity.txt'
                         )
 
