@@ -54,12 +54,12 @@ def worker(options):
         print(" - Marking SV reads that don't map to one of the following chromosomes: %s") % (chroms)
 
     if normal:
-        if options.find_bps:
-            options.slop = 2000
-            bp_regions, slop = get_regions(bam_in, chrom1, bp1, chrom2, bp2, out_dir, options)
-
-            bp1 = find_breakpoints(bp_regions, chrom1, chrom2, bp1, 'bp1', options, cn=True)
-            bp2 = find_breakpoints(bp_regions, chrom2, chrom2, bp2, 'bp2', options, cn=True)
+        # if options.find_bps:
+        #     options.slop = 2000
+        #     bp_regions, slop = get_regions(bam_in, chrom1, bp1, chrom2, bp2, out_dir, options)
+        #
+        #     bp1 = find_breakpoints(bp_regions, chrom1, chrom2, bp1, 'bp1', options, cn=True)
+        #     bp2 = find_breakpoints(bp_regions, chrom2, chrom2, bp2, 'bp2', options, cn=True)
 
         print("* Calculating allele frequency from read depth file: %s" % bam_in)
         opposing, supporting, adj_ratio = get_depth(bam_in, normal, chrom1, bp1, bp2, chroms)

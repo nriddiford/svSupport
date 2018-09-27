@@ -28,7 +28,7 @@ def parse_config(options):
         else:
             options.region = df.loc[i, 'position']
 
-        if df.loc[i, 'T/F'] != 'F':
+        if options.normal_bam and df.loc[i, 'T/F'] != 'F':
             options.find_bps = True
 
         bp1, bp2, af, sv_type, configuration, notes = worker(options)
