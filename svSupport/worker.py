@@ -84,6 +84,7 @@ def worker(options):
     if chrom1 not in chroms:
         supporting = []
         opposing = []
+        alien_integrant1.clear()
         print("%s not in %s" % (chrom1, chroms))
 
     s1 = list(supporting)
@@ -94,6 +95,7 @@ def worker(options):
     if chrom2 not in chroms:
         supporting = s1
         opposing = o1
+        alien_integrant2.clear()
         print("%s not in %s" % (chrom2, chroms))
 
     total_support = len(set(supporting))
@@ -107,7 +109,7 @@ def worker(options):
             sv_type, configuration = 'TRA', '-'
         print("* Variant classified as %s") % (sv_type)
     else:
-        "Read signatire not found at one of the two breakpoints - unable to classify this variant"
+        "Read signature not found at one of the two breakpoints - unable to classify this variant"
         sv_type, configuration = '-', '-'
         notes.append("Missing bp sig")
 
