@@ -23,6 +23,9 @@ def parse_config(options):
         options.normal_bam = df.loc[i, 'normal_bam']
         options.guess = df.loc[i, 'guess']
 
+        genotype = df.loc[i, 'genotype']
+        if genotype != 'somatic_tumour': continue
+
         if df.loc[i, 'chromosome1'] != df.loc[i, 'chromosome2']:
             options.region = df.loc[i, 'chromosome1'] + ":" + str(df.loc[i, 'bp1']) + "-" + df.loc[i, 'chromosome2'] + ":" + str(df.loc[i, 'bp2'])
         else:
@@ -44,7 +47,7 @@ def parse_config(options):
             if filter(r.match, nlist):
                 df.loc[i, 'T/F'] = 'F'
 
-        if not 'zyg' in sv_type:
+        if not 'zyg' in sv_type and sv_type != '-':
             df.loc[i, 'type'] = sv_type
 
         df.loc[i, 'allele_frequency'] = af
@@ -55,7 +58,6 @@ def parse_config(options):
             df.loc[i, 'position'] = df.loc[i, 'chromosome1'] + ":" + str(bp1) + " " + df.loc[i, 'chromosome2'] + ":" + str(bp2)
         else:
             df.loc[i, 'position'] = df.loc[i, 'chromosome1'] + ":" + str(bp1) + "-" + str(bp2)
-
 
         if af == 0:
             df.loc[i, 'T/F'] = 'F'

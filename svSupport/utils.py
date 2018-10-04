@@ -23,12 +23,14 @@ def cleanup(out_dir):
     print("Cleaning up old files in '%s'" % out_dir)
     out_dir = os.path.abspath(out_dir)
     for f in os.listdir(out_dir):
-        try:
-            abs_file = os.path.join(out_dir, f)
-            os.remove(abs_file)
-        except OSError:
-            print("Can't remove %s" % abs_file)
-            pass
+        extension = os.path.splitext(f)[1][1:]
+        if extension in ['bam', 'bai']:
+            try:
+                abs_file = os.path.join(out_dir, f)
+                os.remove(abs_file)
+            except OSError:
+                print("Can't remove %s" % abs_file)
+                pass
     return(out_dir)
 
 
