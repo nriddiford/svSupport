@@ -21,13 +21,18 @@ def parse_config(options):
         options.in_file = df.loc[i, 'bam']
         options.purity = float(df.loc[i, 'tumour_purity'])
         options.normal_bam = df.loc[i, 'normal_bam']
-        options.find_bps = True
         options.guess = df.loc[i, 'guess']
+
+        genotype = df.loc[i, 'genotype']
+        if genotype != 'somatic_tumour': continue
 
         if df.loc[i, 'chromosome1'] != df.loc[i, 'chromosome2']:
             options.region = df.loc[i, 'chromosome1'] + ":" + str(df.loc[i, 'bp1']) + "-" + df.loc[i, 'chromosome2'] + ":" + str(df.loc[i, 'bp2'])
         else:
             options.region = df.loc[i, 'position']
+
+        if options.normal_bam and df.loc[i, 'T/F'] != 'F':
+            options.find_bps = True
 
         bp1, bp2, af, sv_type, configuration, notes = worker(options)
 
@@ -42,7 +47,7 @@ def parse_config(options):
             if filter(r.match, nlist):
                 df.loc[i, 'T/F'] = 'F'
 
-        if not 'zyg' in sv_type:
+        if not 'zyg' in sv_type and sv_type != '-':
             df.loc[i, 'type'] = sv_type
 
         df.loc[i, 'allele_frequency'] = af
@@ -54,14 +59,13 @@ def parse_config(options):
         else:
             df.loc[i, 'position'] = df.loc[i, 'chromosome1'] + ":" + str(bp1) + "-" + str(bp2)
 
-
         if af == 0:
             df.loc[i, 'T/F'] = 'F'
 
     mergeAll(options, sample)
 
     df = df.drop(['bam', 'normal_bam', 'tumour_purity', 'guess', 'sample'], axis=1)
-    df.sort_values(['chromosome1', 'bp1', 'chromosome2', 'bp2'])
+    df = df.sort_values(['chromosome1', 'bp1', 'chromosome2', 'bp2'])
     df.to_csv(outfile, sep="\t", index=False)
 
 

@@ -54,10 +54,15 @@ def worker(options):
         print(" - Marking SV reads that don't map to one of the following chromosomes: %s") % (chroms)
 
     if normal:
+        # if options.find_bps:
+        #     options.slop = 2000
+        #     bp_regions, slop = get_regions(bam_in, chrom1, bp1, chrom2, bp2, out_dir, options)
+        #
+        #     bp1 = find_breakpoints(bp_regions, chrom1, chrom2, bp1, 'bp1', options, cn=True)
+        #     bp2 = find_breakpoints(bp_regions, chrom2, chrom2, bp2, 'bp2', options, cn=True)
+
         print("* Calculating allele frequency from read depth file: %s" % bam_in)
-
         opposing, supporting, adj_ratio = get_depth(bam_in, normal, chrom1, bp1, bp2, chroms)
-
         af = AlleleFrequency(opposing, supporting, purity, chrom1)
         allele_frequency, adj_ratio = af.read_depth_af()
         cnv_type = classify_cnv(chrom1, adj_ratio)
@@ -67,17 +72,29 @@ def worker(options):
     bp_regions, slop = get_regions(bam_in, chrom1, bp1, chrom2, bp2, out_dir, options)
 
     if options.find_bps:
-        print "Guessing bp"
-        bp1_guess, bp1 = find_breakpoints(bp_regions, chrom1, chrom2, bp1, 'bp1', options)
-        bp2_guess, bp2 = find_breakpoints(bp_regions, chrom2, chrom2, bp2, 'bp2', options)
+        bp1 = find_breakpoints(bp_regions, chrom1, chrom2, bp1, 'bp1', options, cn=False)
+        bp2 = find_breakpoints(bp_regions, chrom2, chrom2, bp2, 'bp2', options, cn=False)
 
     seen_reads = []
-
     supporting = []
     opposing = []
 
     bp1_clipped_bam, bp1_disc_bam, bp1_opposing_reads, alien_integrant1, te_tagged1, bp1_sig, seen_reads, supporting, opposing = get_reads(bp_regions, 'bp1', chrom1, chrom2, bp1, bp2, options, seen_reads, chroms, supporting, opposing)
+
+    if chrom1 not in chroms:
+        supporting = []
+        opposing = []
+        print("%s not in %s" % (chrom1, chroms))
+
+    s1 = list(supporting)
+    o1 = list(opposing)
+
     bp2_clipped_bam, bp2_disc_bam, bp2_opposing_reads, alien_integrant2, te_tagged2, bp2_sig, seen_reads, supporting, opposing = get_reads(bp_regions, 'bp2', chrom2, chrom1, bp2, bp1, options, seen_reads, chroms, supporting, opposing)
+
+    if chrom2 not in chroms:
+        supporting = s1
+        opposing = o1
+        print("%s not in %s" % (chrom2, chroms))
 
     total_support = len(set(supporting))
     total_oppose = len(set(opposing))
@@ -100,8 +117,8 @@ def worker(options):
     if total_support == 0:
         print "No support found for variant"
         notes.append("No supporting reads")
-        allele_frequency = '-'
-    elif total_support < 4:
+        allele_frequency = 0
+    elif total_support < 3:
         print "Only found %s reads supporting variant" % total_support
         notes.append("low read support=" + str(total_support))
         af = AlleleFrequency(total_oppose, total_support, purity, chrom1)

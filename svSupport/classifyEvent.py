@@ -25,7 +25,7 @@ def classify_sv(bp1_sig, bp2_sig):
 
 
 def classify_cnv(chrom, rdr):
-    if chrom == 'X' or chrom == 'Y':
+    if chrom in ['X', 'Y']:
         if (rdr < 1):
             cnv_type = 'Homozygous deletion'
         elif (rdr >= 3):
@@ -39,7 +39,7 @@ def classify_cnv(chrom, rdr):
             cnv_type = 'Heterozygous deletion'
         elif (rdr >= 2):
             cnv_type = 'Heterozygous triplication'
-        elif (rdr >= 1.5):
+        elif (rdr > 1):
             cnv_type = 'Heterozygous duplication'
 
     print("%s on %s") % (cnv_type, chrom)
