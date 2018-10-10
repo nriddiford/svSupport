@@ -85,7 +85,6 @@ def worker(options):
         supporting = []
         opposing = []
         alien_integrant1.clear()
-        print("%s not in %s" % (chrom1, chroms))
 
     s1 = list(supporting)
     o1 = list(opposing)
@@ -96,7 +95,6 @@ def worker(options):
         supporting = s1
         opposing = o1
         alien_integrant2.clear()
-        print("%s not in %s" % (chrom2, chroms))
 
     total_support = len(set(supporting))
     total_oppose = len(set(opposing))
