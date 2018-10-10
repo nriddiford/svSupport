@@ -69,7 +69,7 @@ def worker(options):
 
         return bp1, bp2, allele_frequency, cnv_type, '-', None
 
-    bp_regions, slop = get_regions(bam_in, chrom1, bp1, chrom2, bp2, out_dir, options)
+    bp_regions, slop = get_regions(bam_in, chrom1, bp1, chrom2, bp2, out_dir, options, chroms)
 
     if options.find_bps:
         bp1 = find_breakpoints(bp_regions, chrom1, chrom2, bp1, 'bp1', options, cn=False)
@@ -169,23 +169,38 @@ def assessIntegration(alien, te, bp_number):
     return alien_string, te_string
 
 
-def get_regions(bam_in, chrom1, bp1, chrom2, bp2, out_dir, options):
+def get_regions(bam_in, chrom1, bp1, chrom2, bp2, out_dir, options, chroms):
     if not options.slop:
         slop = find_is_sd(bam_in, 10000)
     else:
         slop = options.slop
 
     samfile = pysam.Samfile(bam_in, "rb")
-
     bp1_bam = os.path.join(out_dir, "bp1_region" + ".bam")
+    if chrom1 not in chroms:
+        print("%s not in %s. Will not look for breakpoints in this region" % (chrom1, chroms))
+        downsample = True
+        r_count = 0
 
     with pysam.AlignmentFile(bp1_bam, "wb", template=samfile) as bp1_region:
         for read in samfile.fetch(chrom1, bp1 - slop, bp1 + slop):
+            if downsample:
+                r_count += 1
+                if r_count > 100: break
             bp1_region.write(read)
+
+    downsample = False
+    if chrom2 not in chroms:
+            print("%s not in %s. Will not look for breakpoints in this region" % (chrom2, chroms))
+            downsample = True
+            r_count = 0
 
     bp2_bam = os.path.join(out_dir, "bp2_region" + ".bam")
     with pysam.AlignmentFile(bp2_bam, "wb", template=samfile) as bp2_region:
         for read in samfile.fetch(chrom2, bp2 - slop, bp2 + slop):
+            if downsample:
+                r_count += 1
+                if r_count > 100: break
             bp2_region.write(read)
 
     bps_bam = os.path.join(out_dir, "bp_regs" + ".bam")
