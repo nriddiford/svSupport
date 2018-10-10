@@ -46,6 +46,10 @@ def parse_config(options):
             r = re.compile(".*low read support")
             if filter(r.match, nlist):
                 df.loc[i, 'T/F'] = 'F'
+            # Now mark as F if missing read signature
+            r = re.compile(".*Missing")
+            if filter(r.match, nlist):
+                df.loc[i, 'T/F'] = 'F'
 
         if not 'zyg' in sv_type and sv_type != '-':
             df.loc[i, 'type'] = sv_type
