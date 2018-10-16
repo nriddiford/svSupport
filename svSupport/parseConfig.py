@@ -31,7 +31,7 @@ def parse_config(options):
         else:
             options.region = df.loc[i, 'position']
 
-        if options.normal_bam and df.loc[i, 'T/F'] != 'F':
+        if options.guess and df.loc[i, 'T/F'] != 'F':
             options.find_bps = True
 
         bp1, bp2, af, sv_type, configuration, notes = worker(options)
@@ -48,6 +48,9 @@ def parse_config(options):
                 df.loc[i, 'T/F'] = 'F'
             # Now mark as F if missing read signature
             r = re.compile(".*Missing")
+            if filter(r.match, nlist):
+                df.loc[i, 'T/F'] = 'F'
+            r = re.compile(".*Contamination")
             if filter(r.match, nlist):
                 df.loc[i, 'T/F'] = 'F'
 
