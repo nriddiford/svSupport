@@ -78,28 +78,35 @@ def worker(options):
     seen_reads = []
     supporting = []
     opposing = []
+    notes = []
 
-    bp1_clipped_bam, bp1_disc_bam, bp1_opposing_reads, alien_integrant1, te_tagged1, bp1_sig, seen_reads, supporting, opposing = get_reads(bp_regions, 'bp1', chrom1, chrom2, bp1, bp2, options, seen_reads, chroms, supporting, opposing)
+    bp1_clipped_bam, bp1_disc_bam, bp1_opposing_reads, alien_integrant1, te_tagged1, bp1_sig, seen_reads, supporting, opposing, contaminated_reads = get_reads(bp_regions, 'bp1', chrom1, chrom2, bp1, bp2, options, seen_reads, chroms, supporting, opposing)
 
     if chrom1 not in chroms:
         supporting = []
         opposing = []
         alien_integrant1.clear()
 
+    if contaminated_reads > 2:
+        notes.append("Contamination at bp1=" + str(contaminated_reads))
+
     s1 = list(supporting)
     o1 = list(opposing)
 
-    bp2_clipped_bam, bp2_disc_bam, bp2_opposing_reads, alien_integrant2, te_tagged2, bp2_sig, seen_reads, supporting, opposing = get_reads(bp_regions, 'bp2', chrom2, chrom1, bp2, bp1, options, seen_reads, chroms, supporting, opposing)
+    bp2_clipped_bam, bp2_disc_bam, bp2_opposing_reads, alien_integrant2, te_tagged2, bp2_sig, seen_reads, supporting, opposing, contaminated_reads = get_reads(bp_regions, 'bp2', chrom2, chrom1, bp2, bp1, options, seen_reads, chroms, supporting, opposing)
 
     if chrom2 not in chroms:
         supporting = s1
         opposing = o1
         alien_integrant2.clear()
 
+    if contaminated_reads > 2:
+        notes.append("Contamination at bp2=" + str(contaminated_reads))
+
     total_support = len(set(supporting))
     total_oppose = len(set(opposing))
 
-    notes = []
+
     if bp1_sig and bp2_sig:
         if chrom1 == chrom2:
             sv_type, configuration = classify_sv(bp1_sig, bp2_sig)
@@ -142,6 +149,8 @@ def worker(options):
     if not any(notes):
         notes = None
 
+    print notes
+
     return bp1, bp2, allele_frequency, sv_type, configuration, notes
 
 
@@ -173,6 +182,8 @@ def get_regions(bam_in, chrom1, bp1, chrom2, bp2, out_dir, options, chroms):
     else:
         slop = options.slop
 
+    downsample = False
+
     samfile = pysam.Samfile(bam_in, "rb")
     bp1_bam = os.path.join(out_dir, "bp1_region" + ".bam")
     if chrom1 not in chroms:
@@ -189,9 +200,9 @@ def get_regions(bam_in, chrom1, bp1, chrom2, bp2, out_dir, options, chroms):
 
     downsample = False
     if chrom2 not in chroms:
-            print("%s not in %s. Will not look for breakpoints in this region" % (chrom2, chroms))
-            downsample = True
-            r_count = 0
+        print("%s not in %s. Will not look for breakpoints in this region" % (chrom2, chroms))
+        downsample = True
+        r_count = 0
 
     bp2_bam = os.path.join(out_dir, "bp2_region" + ".bam")
     with pysam.AlignmentFile(bp2_bam, "wb", template=samfile) as bp2_region:
