@@ -25,7 +25,7 @@ def get_reads(bp_regions, bp_number, chrom, chrom2, bp, bp2, options, seen_reads
     printmate = defaultdict(int)
     duplicates = defaultdict(int)
     bp_sig = defaultdict(int)
-
+    contaminated_reads = 0
     if options.debug: print(" * Looking for reads supporting %s" % bp_number)
 
     with pysam.AlignmentFile(clipped_out, "wb", template=samfile) as bpReads, pysam.AlignmentFile(disc_out, "wb", template=samfile) as discReads, pysam.AlignmentFile(opposing_reads, "wb", template=samfile) as op_reads:
@@ -70,16 +70,17 @@ def get_reads(bp_regions, bp_number, chrom, chrom2, bp, bp2, options, seen_reads
             else:
                 direction = 'f'
 
+            skip, clip_filt = filterContamination(read, bp, options)
+            if clip_filt: contaminated_reads += 1
+            if skip: continue
+
             read, bp_sig, split_reads, bpID = getClipped(read, bp, direction, bp_number, bp_sig, split_reads, options)
-
             readtracker = '_'.join(map(str, [read.query_name, read.reference_start]))
-
 
             if bpID and readtracker not in seen_reads:
                 bpReads.write(read)
                 supporting.append(read.query_name)
                 seen_reads.append(readtracker)
-
 
             read, bp_sig, bpID = disc_reads(read, bp2, bp_sig, bp_number, direction, options, chrom2)
 
@@ -102,7 +103,20 @@ def get_reads(bp_regions, bp_number, chrom, chrom2, bp, bp2, options, seen_reads
     pysam.index(disc_out)
     pysam.index(opposing_reads)
 
-    return clipped_out, disc_out, opposing_reads, alien_integrant, te_tagged, bp_sig, seen_reads, supporting, opposing
+    return clipped_out, disc_out, opposing_reads, alien_integrant, te_tagged, bp_sig, seen_reads, supporting, opposing, contaminated_reads
+
+
+def filterContamination(read, bp, options):
+    skip = False
+    clipped = False
+    if re.findall(r'(\d+)[S|H]\d+M(\d+)[S|H]', read.cigarstring):
+        sc_5, sc_3 = re.findall(r'(\d+)[S|H]\d+M(\d+)[S|H]', read.cigarstring)[0]
+        skip = True
+        if sc_5 or sc_3 > 5:
+            if options.debug: ("Skipping double-clippped read %s" % (read.cigarstring))
+            if abs(read.reference_start - bp) < 50:
+                clipped = True
+    return skip, clipped
 
 
 def getOpposing(read, bp, bp_number, chrom2, printmate):
