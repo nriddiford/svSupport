@@ -26,6 +26,7 @@ def get_reads(bp_regions, bp_number, chrom, chrom2, bp, bp2, options, seen_reads
     duplicates = defaultdict(int)
     bp_sig = defaultdict(int)
     contaminated_reads = 0
+
     if options.debug: print(" * Looking for reads supporting %s" % bp_number)
 
     with pysam.AlignmentFile(clipped_out, "wb", template=samfile) as bpReads, pysam.AlignmentFile(disc_out, "wb", template=samfile) as discReads, pysam.AlignmentFile(opposing_reads, "wb", template=samfile) as op_reads:
@@ -39,15 +40,7 @@ def get_reads(bp_regions, bp_number, chrom, chrom2, bp, bp2, options, seen_reads
 
         for read in samfile.fetch(chrom, start, stop):
 
-            if not read.infer_read_length():
-                """This is a problem - and will skip over reads with no mapped mate (which also have no cigar) - try:
-                
-                bf = pysam.AlignemFile(fname, "rb")
-                for r in bf.fetch(until_eof=True):
-                    if r.is_unmapped:
-                    print ("read is unmapped")
-                    """
-                continue
+            if not read.infer_read_length(): continue
 
             dupObj = TrackReads(read, chrom, chrom2, duplicates)
             duplicates, is_dup = dupObj.check_for_standard_dup()
@@ -147,6 +140,9 @@ def disc_reads(read, bp2, bp_sig, bp_number, direction, options, chrom2):
        twice in regions that overlap"""
 
     bpID = None
+
+    if read.mate_is_unmapped:
+        return read, bp_sig, bpID
 
     if not read.is_proper_pair and (abs(read.next_reference_start - bp2) <= 350) and chrom2 == read.next_reference_name:
         if direction == 'r':
