@@ -97,7 +97,7 @@ def get_args():
 
     parser.set_defaults(out_dir='out',
                         purity=1,
-                        chromfile='chroms.txt')
+                        chromfile='chrom_lengths.txt')
 
     options, args = parser.parse_args()
 
