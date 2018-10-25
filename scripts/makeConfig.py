@@ -5,17 +5,6 @@ from optparse import OptionParser
 import ntpath
 
 
-def get_purity(options):
-    with open(options.purity_file, 'r') as purity_file:
-        for l in purity_file:
-            parts = l.rstrip().split('\t')
-            if options.sample == parts[0]:
-                return parts[1]
-        print("Can't find corresponding purity for %s in %s" % (options.sample, options.purity_file))
-        print("Setting sample purity to 1")
-        return 1
-
-
 def makeConfig(options):
     options.outfile = options.sample + '_config.txt'
 
@@ -24,7 +13,7 @@ def makeConfig(options):
         sample, group, bamgroup, t_id = getGroup(options.sample)
         sample_bam, normal_bam = getbam(options.bam_dir, bamgroup, group, t_id)
 
-        df = pd.read_csv(variants, delimiter="\t")
+        df = pd.read_csv(variants, delimiter="\t", index_col=False)
 
         if len(df.index) == 0: sys.exit("No variants in file. Exiting")
 
@@ -37,11 +26,15 @@ def makeConfig(options):
         df.to_csv(options.outfile, sep="\t", index=False)
 
 
-def guess(sr, nbam):
-    if sr == '-':
-        return '', nbam
-    else:
-        return 'T',''
+def get_purity(options):
+    with open(options.purity_file, 'r') as purity_file:
+        for l in purity_file:
+            parts = l.rstrip().split('\t')
+            if options.sample == parts[0]:
+                return parts[1]
+        print("Can't find corresponding purity for %s in %s" % (options.sample, options.purity_file))
+        print("Setting sample purity to 1")
+        return 1
 
 
 def getGroup(sample):
@@ -70,6 +63,13 @@ def getGroup(sample):
     return sample, group, bamgroup, t_id
 
 
+def guess(sr, nbam):
+    if sr == '-':
+        return '', nbam
+    else:
+        return 'T',''
+
+
 def getbam(bam_dir, bamgroup, group, t_id):
     if group == 'HUM':
         n_id = int(t_id) + 2
@@ -85,7 +85,6 @@ def getbam(bam_dir, bamgroup, group, t_id):
         n_id = int(t_id) + 1
         normal_bam = group + "R" + '0' + str(n_id) + '.tagged.filt.SC.RG.bam'
         sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
-    print(n_id, t_id)
 
     sample_bam = os.path.join(bam_dir, bamgroup, sample_bam)
     normal_bam = os.path.join(bam_dir, bamgroup, normal_bam)
