@@ -2,6 +2,7 @@ import os, re
 import pandas as pd
 from worker import worker
 from merge_bams import merge_bams
+from worker import rmDups
 import ntpath
 
 
@@ -23,6 +24,13 @@ def parse_config(options):
         options.normal_bam = df.loc[i, 'normal_bam']
         options.guess = df.loc[i, 'guess']
 
+        if df.loc[i, 'notes'] == '-':
+            df.loc[i, 'notes'] = ''
+
+        # if filter_lowFC(i, df):
+        #     df.loc[i, 'notes'] = "low read depth ratio"
+        #     df.loc[i, 'status'] = 'F'
+
         genotype = df.loc[i, 'genotype']
         if genotype != 'somatic_tumour': continue
 
@@ -31,31 +39,35 @@ def parse_config(options):
         else:
             options.region = df.loc[i, 'position']
 
-        if options.guess and df.loc[i, 'T/F'] != 'F':
+        if options.guess and df.loc[i, 'status'] != 'F':
             options.find_bps = True
 
-        bp1, bp2, af, sv_type, configuration, notes = worker(options)
+        bp1, bp2, af, sv_type, configuration, notes, split_support, disc_support = worker(options)
 
         if notes:
             nlist = filter(None, notes)
             nstring = '; '.join(nlist)
+
             if df.loc[i, 'notes']:
                 df.loc[i, 'notes'] = nstring + "; " + df.loc[i, 'notes']
             else: df.loc[i, 'notes'] = nstring
 
             r = re.compile(".*low read support")
             if filter(r.match, nlist):
-                df.loc[i, 'T/F'] = 'F'
+                df.loc[i, 'status'] = 'F'
             # Now mark as F if missing read signature
             r = re.compile(".*Missing")
             if filter(r.match, nlist):
-                df.loc[i, 'T/F'] = 'F'
+                df.loc[i, 'status'] = 'F'
             r = re.compile(".*Contamination")
             if filter(r.match, nlist):
-                df.loc[i, 'T/F'] = 'F'
+                df.loc[i, 'status'] = 'F'
 
         if not 'zyg' in sv_type and sv_type != '-':
             df.loc[i, 'type'] = sv_type
+
+        if split_support is not None: df.loc[i, 'split_reads'] = split_support
+        if disc_support is not None: df.loc[i, 'disc_reads'] = disc_support
 
         df.loc[i, 'allele_frequency'] = af
         df.loc[i, 'bp1'] = bp1
@@ -67,13 +79,23 @@ def parse_config(options):
             df.loc[i, 'position'] = df.loc[i, 'chromosome1'] + ":" + str(bp1) + "-" + str(bp2)
 
         if af == 0:
-            df.loc[i, 'T/F'] = 'F'
+            df.loc[i, 'status'] = 'F'
 
     mergeAll(options, sample)
 
     df = df.drop(['bam', 'normal_bam', 'tumour_purity', 'guess', 'sample'], axis=1)
     df = df.sort_values(['chromosome1', 'bp1', 'chromosome2', 'bp2'])
     df.to_csv(outfile, sep="\t", index=False)
+
+
+def filter_lowFC(i, df):
+    c1 = df.loc[i, 'chromosome1']
+    rdr = df.loc[i, 'log2(cnv)']
+
+    # if c1 in ['X', 'Y'] and abs(rdr) <
+
+    if abs(rdr) < 0.2:
+        return True
 
 
 def mergeAll(options, sample):
@@ -90,10 +112,13 @@ def mergeAll(options, sample):
             reg.append(os.path.join(options.out_dir, file))
 
     if(len(su)>1):
-        allsup = os.path.join(options.out_dir, sample + '_supporting.bam')
+        allsup = os.path.join(options.out_dir, sample + '_supporting_dirty.bam')
         allop = os.path.join(options.out_dir, sample + '_opposing.bam')
         allregions = os.path.join(options.out_dir, sample + '_regions.bam')
 
-        merge_bams(allsup, options.out_dir, su)
+        sumerged = merge_bams(allsup, options.out_dir, su)
         merge_bams(allop, options.out_dir, op)
         merge_bams(allregions, options.out_dir, reg)
+
+        merged_nodups = os.path.join(sample + '_supporting.bam')
+        rmDups(sumerged, merged_nodups, options.out_dir)

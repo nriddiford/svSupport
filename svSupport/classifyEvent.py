@@ -1,28 +1,27 @@
+import operator
 
 def classify_sv(bp1_sig, bp2_sig):
+    most_common_bp1 = sorted(bp1_sig.items(), key=operator.itemgetter(1), reverse=True)
+    most_common_bp2 = sorted(bp2_sig.items(), key=operator.itemgetter(1), reverse=True)
 
-    for k1 in sorted(bp1_sig.iterkeys()):
-        for k2 in sorted(bp2_sig.iterkeys()):
+    for k1, v1 in most_common_bp1:
+        for k2, v2 in most_common_bp2:
             if '_bp1' in k1:
                 print "read before breakpoint 1"
                 if 'bp2_' in k2:
                     print "read after breakpoint 2"
-                    return 'DEL', '5to3'
+                    return 'DEL', '5to3', k1, k2
                 elif '_bp2' in k2:
                     print "read before breakpoint 2"
-                    return 'BND', '3to3'
+                    return 'BND', '3to3', k1, k2
             elif 'bp1_' in k1:
                 print "read after breakpoint 1"
                 if 'bp2_' in k2:
                     print "read after breakpoint 2"
-                    return 'BND', '5to5'
+                    return 'BND', '5to5', k1, k2
                 elif '_bp2' in k2:
                     print "read before breakpoint 2"
-                    return 'TANDUP', '3to5'
-
-            print "%s: %s" % (k1, bp1_sig[k1])
-            print "%s: %s" % (k2, bp2_sig[k2])
-
+                    return 'TANDUP', '3to5', k1, k2
 
 def classify_cnv(chrom, rdr):
     if chrom in ['X', 'Y']:
