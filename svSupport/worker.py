@@ -1,16 +1,14 @@
-import sys, re, os
-import pysam
-
+import re
 from collections import defaultdict
-
 from utils import print_options, find_is_sd, getChroms
 from classifyEvent import classify_sv, classify_cnv
 from getReads import get_reads
 from depthOps import get_depth
 from findBreakpoints import find_breakpoints
 from calculate_allele_freq import AlleleFrequency
+from filterReads import filter_reads
 
-from merge_bams import merge_bams, sort_bam, rm_bams
+from merge_bams import *
 
 
 def getCooridinates(bps):
@@ -50,7 +48,9 @@ def worker(options):
 
     chroms = []
     if options.chromfile:
-        chroms = getChroms(options)
+        chrom_dict = getChroms(options)
+        chroms = list(chrom_dict.keys())
+
         print(" - Marking SV reads that don't map to one of the following chromosomes: %s") % (chroms)
 
     if normal:
@@ -67,56 +67,81 @@ def worker(options):
         allele_frequency, adj_ratio = af.read_depth_af()
         cnv_type = classify_cnv(chrom1, adj_ratio)
 
-        return bp1, bp2, allele_frequency, cnv_type, '-', None
+        return bp1, bp2, allele_frequency, cnv_type, '-', None, None, None
 
-    bp_regions, slop = get_regions(bam_in, chrom1, bp1, chrom2, bp2, out_dir, options, chroms)
+    bp_regions, options.slop = get_regions(bam_in, chrom1, bp1, chrom2, bp2, out_dir, options, chrom_dict)
 
     if options.find_bps:
-        bp1 = find_breakpoints(bp_regions, chrom1, chrom2, bp1, 'bp1', options, cn=False)
-        bp2 = find_breakpoints(bp_regions, chrom2, chrom2, bp2, 'bp2', options, cn=False)
+        bp1, bp1_split_sig = find_breakpoints(bp_regions, chrom1, chrom2, bp1, 'bp1', options, cn=False)
+        bp2, bp2_split_sig = find_breakpoints(bp_regions, chrom2, chrom2, bp2, 'bp2', options, cn=False)
 
     seen_reads = []
     supporting = []
     opposing = []
     notes = []
 
-    bp1_clipped_bam, bp1_disc_bam, bp1_opposing_reads, alien_integrant1, te_tagged1, bp1_sig, seen_reads, supporting, opposing, contaminated_reads = get_reads(bp_regions, 'bp1', chrom1, chrom2, bp1, bp2, options, seen_reads, chroms, supporting, opposing)
+    bp1_clipped_bam, bp1_disc_bam, bp1_opposing_reads, alien_integrant1, te_tagged1, bp1_disc_sig, seen_reads, supporting, opposing, contaminated_reads = get_reads(bp_regions, 'bp1', chrom1, chrom2, bp1, bp2, options, seen_reads, chroms, supporting, opposing)
 
     if chrom1 not in chroms:
         supporting = []
         opposing = []
         alien_integrant1.clear()
 
-    if contaminated_reads > 2:
+    if contaminated_reads >= 2:
         notes.append("Contamination at bp1=" + str(contaminated_reads))
 
     s1 = list(supporting)
     o1 = list(opposing)
 
-    bp2_clipped_bam, bp2_disc_bam, bp2_opposing_reads, alien_integrant2, te_tagged2, bp2_sig, seen_reads, supporting, opposing, contaminated_reads = get_reads(bp_regions, 'bp2', chrom2, chrom1, bp2, bp1, options, seen_reads, chroms, supporting, opposing)
+    bp2_clipped_bam, bp2_disc_bam, bp2_opposing_reads, alien_integrant2, te_tagged2, bp2_disc_sig, seen_reads, supporting, opposing, contaminated_reads = get_reads(bp_regions, 'bp2', chrom2, chrom1, bp2, bp1, options, seen_reads, chroms, supporting, opposing)
 
     if chrom2 not in chroms:
         supporting = s1
         opposing = o1
         alien_integrant2.clear()
 
-    if contaminated_reads > 2:
+    if contaminated_reads >= 2:
         notes.append("Contamination at bp2=" + str(contaminated_reads))
+
+    if not bp1_disc_sig or not bp1_split_sig and not bp2_disc_sig or not bp2_split_sig:
+        print("One breakpoint has no read support. Exiting")
+        sv_type, configuration = '-', '-'
+        notes.append("Missing bp sig")
+        return bp1, bp2, 0, sv_type, configuration, notes, 0, 0
+
+    if chrom1 != chrom2:
+        if bp1_disc_sig and bp2_disc_sig:
+            sv_type, configuration, bp1_sig, bp2_sig = classify_sv(bp1_disc_sig, bp2_disc_sig)
+            print("Classifying based on discordant reads", "TRA", configuration)
+
+        elif bp1_split_sig and bp2_split_sig:
+            sv_type, configuration, bp1_sig, bp2_sig = classify_sv(bp1_split_sig, bp2_split_sig)
+            print("Classifying based on split reads", "TRA", configuration)
+        else:
+            sv_type, configuration = 'TRA', '-'
+        sv_type = 'TRA'
+
+    else:
+        if bp1_split_sig and bp2_split_sig:
+            sv_type, configuration, bp1_sig, bp2_sig = classify_sv(bp1_split_sig, bp2_split_sig)
+            print("Classifying based on split reads", sv_type, configuration)
+        elif bp1_disc_sig and bp2_disc_sig:
+            sv_type, configuration, bp1_sig, bp2_sig = classify_sv(bp1_disc_sig, bp2_disc_sig)
+            print("Classifying based on discordant reads", sv_type, configuration)
+        else:
+            print("Read signature not found at one of the two breakpoints - unable to classify this variant")
+            sv_type, configuration = '-', '-'
+            notes.append("Missing bp sig")
+
+    print("Supporting reads before filtering: %s " % len(set(supporting)))
+    clean_disc_bam, supporting, disc_support = filter_reads(bp_regions, bp1, bp2, sv_type, options, supporting, bp1_sig, bp2_sig)
+    split_support = len(set(supporting)) - disc_support
+    print("Variant is supported by %s split reads and %s discrodant read pairs" % (split_support, disc_support))
+
+    rm_bams([bp1_disc_bam, bp2_disc_bam])
 
     total_support = len(set(supporting))
     total_oppose = len(set(opposing))
-
-
-    if bp1_sig and bp2_sig:
-        if chrom1 == chrom2:
-            sv_type, configuration = classify_sv(bp1_sig, bp2_sig)
-        else:
-            sv_type, configuration = 'TRA', '-'
-        print("* Variant classified as %s") % (sv_type)
-    else:
-        "Read signature not found at one of the two breakpoints - unable to classify this variant"
-        sv_type, configuration = '-', '-'
-        notes.append("Missing bp sig")
 
     print("* Found %s reads in support of variant" % total_support)
     print("* Found %s reads opposing variant" % total_oppose)
@@ -136,11 +161,15 @@ def worker(options):
 
     svID = '_'.join(map(str, [chrom1, bp1, chrom2, bp2]))
 
-    suoout = os.path.join(out_dir, svID + '_supporting.bam')
+    suout = os.path.join(out_dir, svID + '_supporting_dirty.bam')
     opout = os.path.join(out_dir, svID + '_opposing.bam')
 
-    merge_bams(suoout, out_dir, [bp1_clipped_bam, bp2_clipped_bam, bp1_disc_bam, bp2_disc_bam])
+    susorted = merge_bams(suout, out_dir, [bp1_clipped_bam, bp2_clipped_bam, clean_disc_bam])
     merge_bams(opout, out_dir, [bp1_opposing_reads, bp2_opposing_reads])
+
+    snodups = os.path.join(svID + '_supporting.s.bam')
+
+    rmDups(susorted, snodups, out_dir)
 
     alien1, te1 = assessIntegration(alien_integrant1, te_tagged1, 'bp1')
     alien2, te2 = assessIntegration(alien_integrant2, te_tagged2, 'bp2')
@@ -149,9 +178,7 @@ def worker(options):
     if not any(notes):
         notes = None
 
-    print notes
-
-    return bp1, bp2, allele_frequency, sv_type, configuration, notes
+    return bp1, bp2, allele_frequency, sv_type, configuration, notes, split_support, disc_support
 
 
 def assessIntegration(alien, te, bp_number):
@@ -176,51 +203,97 @@ def assessIntegration(alien, te, bp_number):
     return alien_string, te_string
 
 
-def get_regions(bam_in, chrom1, bp1, chrom2, bp2, out_dir, options, chroms):
+def get_regions(bam_in, chrom1, bp1, chrom2, bp2, out_dir, options, chrom_dict):
     if not options.slop:
         slop = find_is_sd(bam_in, 10000)
     else:
         slop = options.slop
 
     downsample = False
-
     samfile = pysam.Samfile(bam_in, "rb")
+    overlapping_windows = False
+
+    if chrom1 == chrom2 and bp2 - slop <= bp1 + slop:
+        overlapping_windows = True
+        print("Windows overlap")
+        bp1_window_start, bp1_window_end = check_windows(bp1, chrom1, slop, samfile, chrom_dict)
+        bp2_window_start, bp2_window_end = check_windows(bp2, chrom2, slop, samfile, chrom_dict)
+        bp1_window_end = bp2_window_end
+        print("Regions = %s:%s-%s" %(chrom1, bp1_window_start, bp1_window_end))
+
+    else:
+        bp1_window_start, bp1_window_end = check_windows(bp1, chrom1, slop, samfile, chrom_dict)
+
     bp1_bam = os.path.join(out_dir, "bp1_region" + ".bam")
-    if chrom1 not in chroms:
-        print("%s not in %s. Will not look for breakpoints in this region" % (chrom1, chroms))
+    if chrom1 not in chrom_dict:
+        print("%s not in %s. Will not look for breakpoints in this region" % (chrom1, chrom_dict.keys()))
         downsample = True
         r_count = 0
 
     with pysam.AlignmentFile(bp1_bam, "wb", template=samfile) as bp1_region:
-        for read in samfile.fetch(chrom1, bp1 - slop, bp1 + slop):
+        for read in samfile.fetch(chrom1, bp1_window_start, bp1_window_end):
             if downsample:
                 r_count += 1
                 if r_count > 100: break
             bp1_region.write(read)
 
     downsample = False
-    if chrom2 not in chroms:
-        print("%s not in %s. Will not look for breakpoints in this region" % (chrom2, chroms))
-        downsample = True
-        r_count = 0
 
-    bp2_bam = os.path.join(out_dir, "bp2_region" + ".bam")
-    with pysam.AlignmentFile(bp2_bam, "wb", template=samfile) as bp2_region:
-        for read in samfile.fetch(chrom2, bp2 - slop, bp2 + slop):
-            if downsample:
-                r_count += 1
-                if r_count > 100: break
-            bp2_region.write(read)
+    if overlapping_windows:
+        bps_bam = os.path.join(out_dir, "bp_regs" + ".bam")
+        regions = merge_bams(bps_bam, out_dir, [bp1_bam])
+        bpID = '_'.join(map(str, [chrom1, bp1_window_start, chrom1, bp1_window_end]))
+        dups_rem = rmDups(regions, bpID + "_regions.bam", out_dir)
+        sorted_bam = sort_bam(out_dir, dups_rem)
+        rm_bams([dups_rem])
+        return sorted_bam, slop
+    else:
+        if chrom2 not in chrom_dict:
+            print("%s not in %s. Will not look for breakpoints in this region" % (chrom2, chrom_dict.keys()))
+            downsample = True
+            r_count = 0
 
-    bps_bam = os.path.join(out_dir, "bp_regs" + ".bam")
-    regions = merge_bams(bps_bam, out_dir, [bp1_bam, bp2_bam])
+        bp2_bam = os.path.join(out_dir, "bp2_region" + ".bam")
 
-    bpID = '_'.join(map(str, [chrom1, bp1-slop, chrom2, bp2+slop]))
-    dups_rem = rmDups(regions, bpID + "_regions.bam", out_dir)
-    sorted_bam = sort_bam(out_dir, dups_rem)
-    rm_bams([dups_rem])
+        bp2_window_start, bp2_window_end = check_windows(bp2, chrom2, slop, samfile, chrom_dict)
+
+        with pysam.AlignmentFile(bp2_bam, "wb", template=samfile) as bp2_region:
+            for read in samfile.fetch(chrom2, bp2_window_start, bp2_window_end):
+                if downsample:
+                    r_count += 1
+                    if r_count > 100: break
+                bp2_region.write(read)
+
+        bps_bam = os.path.join(out_dir, "bp_regs" + ".bam")
+        regions = merge_bams(bps_bam, out_dir, [bp1_bam, bp2_bam])
+
+        bpID = '_'.join(map(str, [chrom1, bp1_window_start, chrom2, bp2_window_end]))
+        dups_rem = rmDups(regions, bpID + "_regions.bam", out_dir)
+        sorted_bam = sort_bam(out_dir, dups_rem)
+        rm_bams([dups_rem])
 
     return sorted_bam, slop
+
+
+def check_windows(bp, chrom, slop, samfile, chrom_dict):
+    """Check that the windows are within range of chrom length.
+       If not, either take beginning or end of chromosome"""
+    bp_window_start = bp-slop
+    bp_window_end = bp+slop
+
+    try:
+        samfile.fetch(chrom, bp_window_start, bp)
+    except ValueError:
+        print("%s out of range for chrom %s. Adjusting to 0" % (bp_window_start, chrom))
+        bp_window_start = 0
+
+    try:
+        samfile.fetch(chrom, bp, bp_window_end)
+    except ValueError:
+        print("%s out of range for chrom %s. Adjusting to %s" % (bp_window_end, chrom, chrom_dict[chrom]))
+        bp_window_end = int(chrom_dict[chrom])
+
+    return bp_window_start, bp_window_end
 
 
 def rmDups(bamfile, outfile, out_dir):
@@ -242,5 +315,6 @@ def rmDups(bamfile, outfile, out_dir):
             out.write(read)
 
     rm_bams([bamfile])
+    index_bam(dups_rem)
 
     return dups_rem
