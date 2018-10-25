@@ -6,6 +6,7 @@ from trackReads import TrackReads
 def find_breakpoints(regions, chrom, chrom2, bp, bp_number, options, cn):
     samfile = pysam.Samfile(regions, "rb")
     bp_guess = {}
+    sv_type_guess = {}
 
     if cn:
         window_size = 2000
@@ -23,7 +24,8 @@ def find_breakpoints(regions, chrom, chrom2, bp, bp_number, options, cn):
             if not read.infer_read_length():
                 """This is a problem - and will skip over reads with no mapped mate (which also have no cigar)"""
                 continue
-            dupObj = TrackReads(read, chrom, chrom2, duplicates)
+            mate = read
+            dupObj = TrackReads(read, mate, chrom, chrom2, duplicates)
             duplicates, is_dup = dupObj.check_for_standard_dup()
 
             if is_dup:
@@ -37,18 +39,26 @@ def find_breakpoints(regions, chrom, chrom2, bp, bp_number, options, cn):
             if is_dup:
                 continue
 
-            read, readSig, split_reads, bpID = getClipped(read, i, 'f', bp_number, readSig, split_reads, options)
+            if read.is_reverse:
+                direction = 'r'
+            else:
+                direction = 'f'
+
+            read, readSig, split_reads, bpID = getClipped(read, i, direction, bp_number, readSig, split_reads, options)
 
         bp_guess[i] = split_reads
+        sv_type_guess[i] = readSig
+
+    # t_g = max(sv_type_guess, key=sv_type_guess.get)
     bp_g = max(bp_guess, key=bp_guess.get)
+    svtype = sv_type_guess[bp_g]
 
     if cn and bp_guess[bp_g] > 3:
         bp = bp_g
-        print bp_guess[bp_g]
         print("%s adjusted to %s (%s split reads supporting)") % (bp_number, bp_g, bp_guess[bp])
 
     elif not cn and bp_guess[bp_g] > bp_guess[bp] and bp_g != bp:
         bp = bp_g
         print("%s adjusted to %s (%s split reads supporting)") % (bp_number, bp_g, bp_guess[bp])
 
-    return bp
+    return bp, svtype
