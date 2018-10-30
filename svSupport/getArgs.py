@@ -56,6 +56,10 @@ def get_args():
                       help="The chromosome and breakpoints for a " +
                            "structural variant in the format: " +
                            "'chrom:bp_1-bp_2' or 'chrom1:bp_1-chrom2:bp_2")
+    parser.add_option("--sex",
+                      dest="sex",
+                      action="store",
+                      help="Sex of individual: XX, XY [Default: XY] ")
 
     parser.add_option("-o",
                       "--out_dir",
