@@ -17,6 +17,7 @@ def makeConfig(options):
 
         if len(df.index) == 0: sys.exit("No variants in file. Exiting")
 
+        # print(df.head())
         for i in df.index:
             df.loc[i, 'guess'], df.loc[i, 'normal_bam'] = guess(df.loc[i, 'split_reads'], normal_bam)
             df.loc[i, 'sample'] = sample
@@ -57,6 +58,8 @@ def getGroup(sample):
     elif group == 'A785-A788':
         bamgroup = 'A785'
 
+    elif group == 'D050' and int(t_id) >= 10:
+        bamgroup = 'D050k'
     else:
         bamgroup = group
 
@@ -80,6 +83,10 @@ def getbam(bam_dir, bamgroup, group, t_id):
         n_no = int(t_no) + 1
         n_id = '-'.join(map(str,[n_no, sid]))
         normal_bam = group + "R" + '0' + str(n_id) + '.tagged.filt.SC.RG.bam'
+        sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
+    elif bamgroup == 'D050k':
+        n_id = int(t_id) + 1
+        normal_bam = group + "R" + str(n_id) + '.tagged.filt.SC.RG.bam'
         sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
     else:
         n_id = int(t_id) + 1
