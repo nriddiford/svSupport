@@ -1,6 +1,6 @@
 import re
 from collections import defaultdict
-from utils import print_options, find_is_sd, getChroms
+from utils import *
 from classifyEvent import classify_sv, classify_cnv
 from getReads import get_reads
 from depthOps import get_depth
@@ -80,7 +80,7 @@ def worker(options):
     opposing = []
     notes = []
 
-    bp1_clipped_bam, bp1_disc_bam, bp1_opposing_reads, alien_integrant1, te_tagged1, bp1_disc_sig, seen_reads, supporting, opposing, contaminated_reads = get_reads(bp_regions, 'bp1', chrom1, chrom2, bp1, bp2, options, seen_reads, chroms, supporting, opposing)
+    bp1_clipped_bam, bp1_disc_bam, bp1_opposing_reads, alien_integrant1, te_tagged1, bp1_disc_sig, seen_reads, supporting, opposing, contaminated_reads, bp1_read_tags = get_reads(bp_regions, 'bp1', chrom1, chrom2, bp1, bp2, options, seen_reads, chroms, supporting, opposing)
 
     if chrom1 not in chroms:
         supporting = []
@@ -93,7 +93,7 @@ def worker(options):
     s1 = list(supporting)
     o1 = list(opposing)
 
-    bp2_clipped_bam, bp2_disc_bam, bp2_opposing_reads, alien_integrant2, te_tagged2, bp2_disc_sig, seen_reads, supporting, opposing, contaminated_reads = get_reads(bp_regions, 'bp2', chrom2, chrom1, bp2, bp1, options, seen_reads, chroms, supporting, opposing)
+    bp2_clipped_bam, bp2_disc_bam, bp2_opposing_reads, alien_integrant2, te_tagged2, bp2_disc_sig, seen_reads, supporting, opposing, contaminated_reads, bp2_read_tags = get_reads(bp_regions, 'bp2', chrom2, chrom1, bp2, bp1, options, seen_reads, chroms, supporting, opposing)
 
     if chrom2 not in chroms:
         supporting = s1
@@ -103,46 +103,61 @@ def worker(options):
     if contaminated_reads >= 2:
         notes.append("Contamination at bp2=" + str(contaminated_reads))
 
+    classify = True
+
     if not bp1_disc_sig or not bp1_split_sig and not bp2_disc_sig or not bp2_split_sig:
-        print("One breakpoint has no read support. Exiting")
+        print("One breakpoint has no read support. Not able to classify variant")
         sv_type, configuration = '-', '-'
         notes.append("Missing bp sig")
-        return bp1, bp2, 0, sv_type, configuration, notes, 0, 0
+        classify = False
+        # return bp1, bp2, 0, sv_type, configuration, notes, 0, 0
 
-    if chrom1 != chrom2:
-        if bp1_disc_sig and bp2_disc_sig:
-            sv_type, configuration, bp1_sig, bp2_sig = classify_sv(bp1_disc_sig, bp2_disc_sig)
-            print("Classifying based on discordant reads", "TRA", configuration)
+    if classify:
+        if chrom1 != chrom2:
+            if bp1_disc_sig and bp2_disc_sig:
+                sv_type, configuration, bp1_sig, bp2_sig = classify_sv(bp1_disc_sig, bp2_disc_sig)
+                print("Classifying based on split reads : TRA [%s]" % configuration)
 
-        elif bp1_split_sig and bp2_split_sig:
-            sv_type, configuration, bp1_sig, bp2_sig = classify_sv(bp1_split_sig, bp2_split_sig)
-            print("Classifying based on split reads", "TRA", configuration)
+            elif bp1_split_sig and bp2_split_sig:
+                sv_type, configuration, bp1_sig, bp2_sig = classify_sv(bp1_split_sig, bp2_split_sig)
+                print("Classifying based on split reads : TRA [%s]" % configuration)
+            else:
+                sv_type, configuration = 'TRA', '-'
+            sv_type = 'TRA'
+
         else:
-            sv_type, configuration = 'TRA', '-'
-        sv_type = 'TRA'
+            if bp1_split_sig and bp2_split_sig:
+                sv_type, configuration, bp1_sig, bp2_sig = classify_sv(bp1_split_sig, bp2_split_sig)
+                print("Classifying based on split reads : %s [%s]" % (sv_type, configuration))
+            elif bp1_disc_sig and bp2_disc_sig:
+                sv_type, configuration, bp1_sig, bp2_sig = classify_sv(bp1_disc_sig, bp2_disc_sig)
+                print("Classifying based on discordant reads : %s [%s]" % (sv_type, configuration))
+            else:
+                print("Read signature not found at one of the two breakpoints - unable to classify this variant")
+                sv_type, configuration = '-', '-'
+                notes.append("Missing bp sig")
+
+        print("Supporting reads before filtering: %s " % len(set(supporting)))
+        read_tags = merge_two_dicts(bp1_read_tags, bp2_read_tags)
+        print("Breakpoint signature : %s %s" % (bp1_sig, bp2_sig))
+        clean_disc_bam, supporting, disc_support, split_support = filter_reads(bp_regions, bp1, bp2, chrom1, chrom2, sv_type, options, supporting, opposing, bp1_sig, bp2_sig, read_tags)
+
+        split_support = len(split_support)
+        disc_support = len(disc_support)
+
+        rm_bams([bp1_disc_bam, bp2_disc_bam, bp1_clipped_bam, bp2_clipped_bam])
+
 
     else:
-        if bp1_split_sig and bp2_split_sig:
-            sv_type, configuration, bp1_sig, bp2_sig = classify_sv(bp1_split_sig, bp2_split_sig)
-            print("Classifying based on split reads", sv_type, configuration)
-        elif bp1_disc_sig and bp2_disc_sig:
-            sv_type, configuration, bp1_sig, bp2_sig = classify_sv(bp1_disc_sig, bp2_disc_sig)
-            print("Classifying based on discordant reads", sv_type, configuration)
-        else:
-            print("Read signature not found at one of the two breakpoints - unable to classify this variant")
-            sv_type, configuration = '-', '-'
-            notes.append("Missing bp sig")
+        disc_support = 0
+        split_support = 0
 
-    print("Supporting reads before filtering: %s " % len(set(supporting)))
-    clean_disc_bam, supporting, disc_support = filter_reads(bp_regions, bp1, bp2, sv_type, options, supporting, bp1_sig, bp2_sig)
-    split_support = len(set(supporting)) - disc_support
-    print("Variant is supported by %s split reads and %s discrodant read pairs" % (split_support, disc_support))
+    # split_support = len(set(supporting)) - disc_support
+    # if split_support < 0: split_support = 0     print(split_support)
 
-    rm_bams([bp1_disc_bam, bp2_disc_bam])
-
-    total_support = len(set(supporting))
+    print("Variant is supported by %s split reads and %s discordant read pairs" % (split_support, disc_support))
+    total_support = split_support + disc_support
     total_oppose = len(set(opposing))
-
     print("* Found %s reads in support of variant" % total_support)
     print("* Found %s reads opposing variant" % total_oppose)
 
@@ -150,25 +165,24 @@ def worker(options):
         print "No support found for variant"
         notes.append("No supporting reads")
         allele_frequency = 0
-    elif total_support < 3:
-        print "Only found %s reads supporting variant" % total_support
-        notes.append("low read support=" + str(total_support))
-        af = AlleleFrequency(total_oppose, total_support, purity, chrom1)
-        allele_frequency = af.read_support_af()
     else:
         af = AlleleFrequency(total_oppose, total_support, purity, chrom1)
         allele_frequency = af.read_support_af()
 
-    svID = '_'.join(map(str, [chrom1, bp1, chrom2, bp2]))
+    if total_support < 3:
+        notes.append("low read support=" + str(total_support))
 
+    svID = '_'.join(map(str, [chrom1, bp1, chrom2, bp2]))
     suout = os.path.join(out_dir, svID + '_supporting_dirty.bam')
     opout = os.path.join(out_dir, svID + '_opposing.bam')
 
-    susorted = merge_bams(suout, out_dir, [bp1_clipped_bam, bp2_clipped_bam, clean_disc_bam])
+    if classify:
+        susorted = merge_bams(suout, out_dir, [clean_disc_bam])
+    else:
+        susorted = merge_bams(suout, out_dir, [bp1_clipped_bam, bp2_clipped_bam, bp1_disc_bam, bp2_disc_bam])
+
     merge_bams(opout, out_dir, [bp1_opposing_reads, bp2_opposing_reads])
-
     snodups = os.path.join(svID + '_supporting.s.bam')
-
     rmDups(susorted, snodups, out_dir)
 
     alien1, te1 = assessIntegration(alien_integrant1, te_tagged1, 'bp1')
@@ -194,7 +208,7 @@ def assessIntegration(alien, te, bp_number):
     te[None] = 0
     tk = max(te, key=te.get)
 
-    if tk:
+    if tk and te[tk] > 1:
         print " * Found %s %s-tagged reads at %s" % (te[tk], tk, bp_number)
         te_string = '_'.join(map(str, [bp_number, tk, te[tk]]))
     else:
@@ -220,7 +234,6 @@ def get_regions(bam_in, chrom1, bp1, chrom2, bp2, out_dir, options, chrom_dict):
         bp2_window_start, bp2_window_end = check_windows(bp2, chrom2, slop, samfile, chrom_dict)
         bp1_window_end = bp2_window_end
         print("Regions = %s:%s-%s" %(chrom1, bp1_window_start, bp1_window_end))
-
     else:
         bp1_window_start, bp1_window_end = check_windows(bp1, chrom1, slop, samfile, chrom_dict)
 
