@@ -23,7 +23,7 @@ class TrackReads(object):
 
 
     def check_for_standard_dup(self):
-        dupkey = '_'.join(map(str, [self.read.reference_start, self.read.reference_end, self.mate.next_reference_start]))
+        dupkey = '_'.join(map(str, [self.read.reference_start, self.read.reference_end, self.mate.reference_start]))
         dup = False
         self.duplicates[dupkey] += 1
         if self.duplicates[dupkey] > 1:
@@ -33,7 +33,7 @@ class TrackReads(object):
 
 
     def check_for_disc_dup(self):
-        dupkey = '_'.join(map(str, [self.chrom1, self.read.reference_start, self.read.reference_end, self.chrom2, self.mate.next_reference_start]))
+        dupkey = '_'.join(map(str, [self.chrom1, self.read.reference_start, self.read.reference_end, self.chrom2, self.mate.reference_start]))
         dup = False
         self.duplicates[dupkey] += 1
         if self.duplicates[dupkey] > 1:
@@ -47,6 +47,19 @@ class TrackReads(object):
         try:
             self.read.get_tag('SA')
             dupkey = '_'.join(map(str, [self.read.reference_start, self.read.reference_end, self.read.get_tag('SA').split(',')[1]]), self.chrom2, self.mate.next_reference_start)
+            self.duplicates[dupkey] += 1
+            if self.duplicates[dupkey] > 1:
+                dup = True
+        except:
+            pass
+
+        return self.duplicates, dup
+
+    def check_for_clipped_dup_no_mate(self):
+        dup = False
+        try:
+            self.read.get_tag('SA')
+            dupkey = '_'.join(map(str, [self.read.reference_start, self.read.reference_end, self.read.get_tag('SA').split(',')[1]]))
             self.duplicates[dupkey] += 1
             if self.duplicates[dupkey] > 1:
                 dup = True
