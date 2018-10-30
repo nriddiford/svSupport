@@ -27,10 +27,6 @@ def parse_config(options):
         if df.loc[i, 'notes'] == '-':
             df.loc[i, 'notes'] = ''
 
-        # if filter_lowFC(i, df):
-        #     df.loc[i, 'notes'] = "low read depth ratio"
-        #     df.loc[i, 'status'] = 'F'
-
         genotype = df.loc[i, 'genotype']
         if genotype != 'somatic_tumour': continue
 
@@ -39,10 +35,13 @@ def parse_config(options):
         else:
             options.region = df.loc[i, 'position']
 
+        # TODO this can be cleaned up now (seeing as we're not marking vars prior to svSupport
         if options.guess and df.loc[i, 'status'] != 'F':
             options.find_bps = True
 
         bp1, bp2, af, sv_type, configuration, notes, split_support, disc_support = worker(options)
+
+        df.loc[i, 'status'], notes = mark_low_FC(df.loc[i, 'status'], notes, options.sex, df.loc[i, 'log2(cnv)'], sv_type)
 
         if notes:
             nlist = filter(None, notes)
@@ -65,6 +64,9 @@ def parse_config(options):
 
         if not 'zyg' in sv_type and sv_type != '-':
             df.loc[i, 'type'] = sv_type
+        elif 'zyg' in sv_type:
+            df.loc[i, 'configuration'] = sv_type
+
 
         if split_support is not None: df.loc[i, 'split_reads'] = split_support
         if disc_support is not None: df.loc[i, 'disc_reads'] = disc_support
@@ -88,14 +90,14 @@ def parse_config(options):
     df.to_csv(outfile, sep="\t", index=False)
 
 
-def filter_lowFC(i, df):
-    c1 = df.loc[i, 'chromosome1']
-    rdr = df.loc[i, 'log2(cnv)']
-
-    # if c1 in ['X', 'Y'] and abs(rdr) <
-
-    if abs(rdr) < 0.2:
-        return True
+def mark_low_FC(status, notes, sex, fc, sv_type):
+    if sv_type in ['DEL', 'DUP', 'TANDUP']:
+        if sex == 'XX':
+            print("Female")
+            if abs(fc) < 0.3:
+                notes.append("Low FC")
+                status = 'F'
+    return status, notes
 
 
 def mergeAll(options, sample):
