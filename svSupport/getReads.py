@@ -74,12 +74,9 @@ def get_reads(bp_regions, bp_number, chrom, chrom2, bp, bp2, options, seen_reads
 
             try:
                 read.get_tag('SV')
-                # read_tags[readtracker] = read.get_tag('SV')
                 read_tags[read.query_name].append(read.get_tag('SV'))
-
             except KeyError:
                 pass
-
 
     pysam.index(clipped_out)
     pysam.index(disc_out)

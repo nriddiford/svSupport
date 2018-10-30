@@ -7,6 +7,7 @@ from depthOps import get_depth
 from findBreakpoints import find_breakpoints
 from calculate_allele_freq import AlleleFrequency
 from filterReads import filter_reads
+import json
 
 from merge_bams import *
 
@@ -138,6 +139,7 @@ def worker(options):
                 notes.append("Missing bp sig")
 
         print("Supporting reads before filtering: %s " % len(set(supporting)))
+
         read_tags = merge_two_dicts(bp1_read_tags, bp2_read_tags)
         print("Breakpoint signature : %s %s" % (bp1_sig, bp2_sig))
         clean_disc_bam, supporting, disc_support, split_support = filter_reads(bp_regions, bp1, bp2, chrom1, chrom2, sv_type, options, supporting, opposing, bp1_sig, bp2_sig, read_tags)
@@ -152,9 +154,6 @@ def worker(options):
         disc_support = 0
         split_support = 0
 
-    # split_support = len(set(supporting)) - disc_support
-    # if split_support < 0: split_support = 0     print(split_support)
-
     print("Variant is supported by %s split reads and %s discordant read pairs" % (split_support, disc_support))
     total_support = split_support + disc_support
     total_oppose = len(set(opposing))
@@ -162,15 +161,13 @@ def worker(options):
     print("* Found %s reads opposing variant" % total_oppose)
 
     if total_support == 0:
-        print "No support found for variant"
+        print("No support found for variant")
         notes.append("No supporting reads")
-        allele_frequency = 0
-    else:
-        af = AlleleFrequency(total_oppose, total_support, purity, chrom1)
-        allele_frequency = af.read_support_af()
-
-    if total_support < 3:
+    elif total_support < 3:
         notes.append("low read support=" + str(total_support))
+
+    af = AlleleFrequency(total_oppose, total_support, purity, chrom1)
+    allele_frequency = af.read_support_af()
 
     svID = '_'.join(map(str, [chrom1, bp1, chrom2, bp2]))
     suout = os.path.join(out_dir, svID + '_supporting_dirty.bam')
@@ -190,7 +187,7 @@ def worker(options):
     notes = [', '.join(notes), alien1, te1, alien2, te2]
 
     if not any(notes):
-        notes = None
+        notes = []
 
     return bp1, bp2, allele_frequency, sv_type, configuration, notes, split_support, disc_support
 
