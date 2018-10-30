@@ -111,14 +111,20 @@ def mergeAll(options, sample):
         elif file.endswith("regions.s.bam"):
             reg.append(os.path.join(options.out_dir, file))
 
-    if(len(su)>1):
+    if len(su) > 1:
         allsup = os.path.join(options.out_dir, sample + '_supporting_dirty.bam')
-        allop = os.path.join(options.out_dir, sample + '_opposing.bam')
-        allregions = os.path.join(options.out_dir, sample + '_regions.bam')
+        allop = os.path.join(options.out_dir, sample + '_opposing_dirty.bam')
+        allregions = os.path.join(options.out_dir, sample + '_regions_dirty.bam')
 
         sumerged = merge_bams(allsup, options.out_dir, su)
-        merge_bams(allop, options.out_dir, op)
-        merge_bams(allregions, options.out_dir, reg)
+        opmerged = merge_bams(allop, options.out_dir, op)
+        remerged = merge_bams(allregions, options.out_dir, reg)
 
-        merged_nodups = os.path.join(sample + '_supporting.bam')
-        rmDups(sumerged, merged_nodups, options.out_dir)
+        merged_su_nodups = os.path.join(sample + '_supporting.bam')
+        merged_op_nodups = os.path.join(sample + '_opposing.bam')
+        merged_regs_nodups = os.path.join(sample + '_regions.bam')
+
+        rmDups(sumerged, merged_su_nodups, options.out_dir)
+        rmDups(opmerged, merged_op_nodups, options.out_dir)
+        rmDups(remerged, merged_regs_nodups, options.out_dir)
+
