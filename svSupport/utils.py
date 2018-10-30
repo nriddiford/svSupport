@@ -63,3 +63,8 @@ def find_is_sd(bam_file, samplesize):
     slop = int(mean + 5 * sdev)
     print('Using slop equal to 5 standard deviations from insert size mean: {:.0f}'.format(slop))
     return slop
+
+def merge_two_dicts(x, y):
+    z = x.copy()   # start with x's keys and values
+    z.update(y)    # modifies z with y's keys and values & returns None
+    return z
