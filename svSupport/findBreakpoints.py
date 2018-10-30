@@ -7,6 +7,7 @@ def find_breakpoints(regions, chrom, chrom2, bp, bp_number, options, cn):
     samfile = pysam.Samfile(regions, "rb")
     bp_guess = {}
     sv_type_guess = {}
+    read_tags = defaultdict(list)
 
     if cn:
         window_size = 2000
@@ -21,21 +22,19 @@ def find_breakpoints(regions, chrom, chrom2, bp, bp_number, options, cn):
         duplicates = defaultdict(int)
 
         for read in samfile.fetch(chrom, i - 5, i + 5):
+            # TODO - can probably get rid of this?
             if not read.infer_read_length():
                 """This is a problem - and will skip over reads with no mapped mate (which also have no cigar)"""
                 continue
-            mate = read
-            dupObj = TrackReads(read, mate, chrom, chrom2, duplicates)
-            duplicates, is_dup = dupObj.check_for_standard_dup()
-
-            if is_dup:
-                continue
-            duplicates, is_dup = dupObj.check_for_disc_dup()
-
-            if is_dup:
-                continue
-            duplicates, is_dup = dupObj.check_for_clipped_dup()
-
+            # TODO - can probably get rid of this?
+            # duplicates, is_dup = dupObj.check_for_standard_dup()
+            #
+            # if is_dup:
+            #     continue
+            # duplicates, is_dup = dupObj.check_for_disc_dup()
+            #
+            dupObj = TrackReads(read, read, chrom, chrom2, duplicates)
+            duplicates, is_dup = dupObj.check_for_clipped_dup_no_mate()
             if is_dup:
                 continue
 
@@ -44,7 +43,7 @@ def find_breakpoints(regions, chrom, chrom2, bp, bp_number, options, cn):
             else:
                 direction = 'f'
 
-            read, readSig, split_reads, bpID = getClipped(read, i, direction, bp_number, readSig, split_reads, options)
+            read, readSig, split_reads, bpID, read_tags = getClipped(read, i, direction, bp_number, readSig, split_reads, options, read_tags)
 
         bp_guess[i] = split_reads
         sv_type_guess[i] = readSig
@@ -53,6 +52,7 @@ def find_breakpoints(regions, chrom, chrom2, bp, bp_number, options, cn):
     bp_g = max(bp_guess, key=bp_guess.get)
     svtype = sv_type_guess[bp_g]
 
+    # TODO - Need to revert back to CN split read searching
     if cn and bp_guess[bp_g] > 3:
         bp = bp_g
         print("%s adjusted to %s (%s split reads supporting)") % (bp_number, bp_g, bp_guess[bp])
