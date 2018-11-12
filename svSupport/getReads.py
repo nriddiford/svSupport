@@ -33,7 +33,14 @@ def get_reads(bp_regions, bp_number, chrom, chrom2, bp, bp2, options, seen_reads
         te_tagged = defaultdict(int)
         alien_integrant = defaultdict(int)
 
-        for read in samfile.fetch(chrom, bp-500, bp+500):
+        # Hack 2.11.18
+        if bp - 500 <= 0:
+            window_start = 1
+        else:
+            window_start = bp - 500
+        window_end = bp + 500
+
+        for read in samfile.fetch(chrom, window_start, window_end):
             if not read.infer_read_length(): continue
             if read.is_reverse:
                 direction = 'r'
@@ -104,7 +111,7 @@ def filterContamination(read, bp, options):
     if re.findall(r'(\d+)[S|H]\d+M(\d+)[S|H]', read.cigarstring):
         sc_5, sc_3 = re.findall(r'(\d+)[S|H]\d+M(\d+)[S|H]', read.cigarstring)[0]
         skip_contaminated = True
-        if sc_5 and sc_3 > 3:
+        if sc_5 >= 5 and sc_3 >= 5:
             if options.debug: print("Skipping double-clippped read %s" % (read.query_name))
             if abs(read.reference_start - bp) < 100:
                 contaminated = True
