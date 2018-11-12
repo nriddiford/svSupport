@@ -9,14 +9,16 @@ def make_dirs(out_dir):
         os.makedirs(out_dir)
 
 
-def getChroms(options):
+def get_chroms(chromfile):
     """Read a file specifying native chromosomes"""
     chroms = {}
-    with open(options.chromfile) as c:
+    with open(chromfile) as c:
         for line in c:
-            chrom, length = line.strip().split()
-            chroms[chrom] = length
-            # chroms.append(str(line))
+            try:
+                chrom, length = line.strip().split()
+                chroms[chrom] = length
+            except ValueError:
+                chroms[line.strip()] = 1
     return chroms
 
 
