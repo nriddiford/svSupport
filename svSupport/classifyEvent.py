@@ -1,5 +1,6 @@
 import operator
 
+
 def classify_sv(bp1_sig, bp2_sig):
     most_common_bp1 = sorted(bp1_sig.items(), key=operator.itemgetter(1), reverse=True)
     most_common_bp2 = sorted(bp2_sig.items(), key=operator.itemgetter(1), reverse=True)
@@ -23,8 +24,9 @@ def classify_sv(bp1_sig, bp2_sig):
                     print "read before breakpoint 2"
                     return 'TANDUP', '3to5', k1, k2
 
-def classify_cnv(chrom, rdr):
-    if chrom in ['X', 'Y']:
+
+def classify_cnv(chrom, rdr, sex):
+    if chrom in ['X', 'Y'] and sex == 'XY':
         if (rdr < 1):
             cnv_type = 'Homozygous deletion'
         elif (rdr >= 3):
@@ -32,7 +34,7 @@ def classify_cnv(chrom, rdr):
         elif (rdr >= 1):
             cnv_type = 'Homozygous duplication'
     else:
-        if (rdr <= 0.5):
+        if (rdr <= 0.3):
             cnv_type = 'Homozygous deletion'
         elif (rdr <= 1):
             cnv_type = 'Heterozygous deletion'
