@@ -23,9 +23,10 @@ def parse_config(options):
         options.purity = float(df.loc[i, 'tumour_purity'])
         options.normal_bam = df.loc[i, 'normal_bam']
         options.guess = df.loc[i, 'guess']
+        options.sex = df.loc[i, 'sex']
 
-        if df.loc[i, 'notes'] == '-':
-            df.loc[i, 'notes'] = ''
+        if df.loc[i, 'notes'] == '-': df.loc[i, 'notes'] = ''
+        if df.loc[i, 'status'] == '-': df.loc[i, 'status'] = ''
 
         genotype = df.loc[i, 'genotype']
         if genotype != 'somatic_tumour': continue
@@ -41,32 +42,24 @@ def parse_config(options):
 
         bp1, bp2, af, sv_type, configuration, notes, split_support, disc_support = worker(options)
 
-        df.loc[i, 'status'], notes = mark_low_FC(df.loc[i, 'status'], notes, options.sex, df.loc[i, 'log2(cnv)'], sv_type)
-
-        if notes:
-            nlist = filter(None, notes)
-            nstring = '; '.join(nlist)
-
-            if df.loc[i, 'notes']:
-                df.loc[i, 'notes'] = nstring + "; " + df.loc[i, 'notes']
-            else: df.loc[i, 'notes'] = nstring
-
-            r = re.compile(".*low read support")
-            if filter(r.match, nlist):
-                df.loc[i, 'status'] = 'F'
-            # Now mark as F if missing read signature
-            r = re.compile(".*Missing")
-            if filter(r.match, nlist):
-                df.loc[i, 'status'] = 'F'
-            r = re.compile(".*Contamination")
-            if filter(r.match, nlist):
-                df.loc[i, 'status'] = 'F'
-
-        if not 'zyg' in sv_type and sv_type != '-':
-            df.loc[i, 'type'] = sv_type
-        elif 'zyg' in sv_type:
+        if options.normal_bam:
             df.loc[i, 'configuration'] = sv_type
+            sv_type = df.loc[i, 'type']
+        else:
+             df.loc[i, 'configuration'] = configuration
 
+        notes = mark_low_FC(notes, options.sex, df.loc[i, 'log2(cnv)'], sv_type, df.loc[i, 'chromosome1'], split_support)
+
+        nlist = filter(None, notes)
+        nstring = '; '.join(nlist)
+        if df.loc[i, 'notes']:
+            df.loc[i, 'notes'] = nstring + "; " + df.loc[i, 'notes']
+        else: df.loc[i, 'notes'] = nstring
+
+        df.loc[i, 'status'] = mark_filters(notes)
+
+        # if not 'zyg' in sv_type and sv_type != '-':
+        df.loc[i, 'type'] = sv_type
 
         if split_support is not None: df.loc[i, 'split_reads'] = split_support
         if disc_support is not None: df.loc[i, 'disc_reads'] = disc_support
@@ -74,7 +67,7 @@ def parse_config(options):
         df.loc[i, 'allele_frequency'] = af
         df.loc[i, 'bp1'] = bp1
         df.loc[i, 'bp2'] = bp2
-        df.loc[i, 'configuration'] = configuration
+
         if df.loc[i, 'chromosome1'] != df.loc[i, 'chromosome2']:
             df.loc[i, 'position'] = df.loc[i, 'chromosome1'] + ":" + str(bp1) + " " + df.loc[i, 'chromosome2'] + ":" + str(bp2)
         else:
@@ -85,20 +78,72 @@ def parse_config(options):
 
     mergeAll(options, sample)
 
-    df = df.drop(['bam', 'normal_bam', 'tumour_purity', 'guess', 'sample'], axis=1)
+    df = df.drop(['bam', 'normal_bam', 'tumour_purity', 'guess', 'sample', 'sex'], axis=1)
     df = df.sort_values(['chromosome1', 'bp1', 'chromosome2', 'bp2'])
     df.to_csv(outfile, sep="\t", index=False)
 
 
-def mark_low_FC(status, notes, sex, fc, sv_type):
-    if sv_type in ['DEL', 'DUP', 'TANDUP']:
-        if sex == 'XX':
-            print("Female")
-            if abs(fc) < 0.3:
-                notes.append("Low FC")
-                status = 'F'
-    return status, notes
+def mark_low_FC(notes, sex, fc, sv_type, chrom, split_support):
+    if split_support >= 5:
+        return notes
+    elif split_support:
+        hom_pass = 0.2
+        het_pass = 0.1
+    else:
+        hom_pass = 0.6
+        het_pass = 0.4
 
+    if sv_type in ['DEL', 'DUP', 'TANDUP']:
+        if chrom in ['X', 'Y'] and sex == 'XY':
+            if abs(fc) < hom_pass:
+                notes.append("low FC")
+        elif abs(fc) < het_pass:
+            notes.append("low FC")
+        # if sex == 'XX':
+        #     if abs(fc) < 0.3:
+        #         notes.append("low FC")
+        #         status = 'F'
+        # else:
+        #     if chrom in ['X', 'Y']:
+        #         if abs(fc) < 0.58:
+        #             notes.append("low FC")
+        #             status = 'F'
+        #     else:
+        #         if abs(fc) < 0.3:
+        #             notes.append("low FC")
+        #             status = 'F'
+    return notes
+
+
+def mark_filters(notes):
+    filters = ['low read support', 'missing', 'contamination', 'low depth', 'low FC', 'excluded']
+    for n in notes:
+        for f in filters:
+            if f in n:
+                return 'F'
+
+    # if notes:
+    #     nlist = filter(None, notes)
+    #     nstring = '; '.join(nlist)
+    #
+    #     if df.loc[i, 'notes']:
+    #         df.loc[i, 'notes'] = nstring + "; " + df.loc[i, 'notes']
+    #     else: df.loc[i, 'notes'] = nstring
+    #
+    #     r = re.compile(".*low read support")
+    #     if filter(r.match, nlist):
+    #         df.loc[i, 'status'] = 'F'
+    #     # Now mark as F if missing read signature
+    #     r = re.compile(".*missing")
+    #     if filter(r.match, nlist):
+    #         sv_type = df.loc[i, 'type']
+    #         df.loc[i, 'status'] = 'F'
+    #     r = re.compile(".*contamination")
+    #     if filter(r.match, nlist):
+    #         df.loc[i, 'status'] = 'F'
+    #     r = re.compile(".*depth")
+    #     if filter(r.match, nlist):
+    #         df.loc[i, 'status'] = 'F'
 
 def mergeAll(options, sample):
     su = []
