@@ -11,18 +11,24 @@ def makeConfig(options):
     with open(options.variants, 'r') as variants:
         purity = get_purity(options)
         sample, group, bamgroup, t_id = getGroup(options.sample)
+        print(bamgroup)
         sample_bam, normal_bam = getbam(options.bam_dir, bamgroup, group, t_id)
 
         df = pd.read_csv(variants, delimiter="\t", index_col=False)
 
         if len(df.index) == 0: sys.exit("No variants in file. Exiting")
 
-        # print(df.head())
+        if group in ['D050k', 'D050']:
+            sex = 'XX'
+        else:
+            sex = 'XY'
+
         for i in df.index:
             df.loc[i, 'guess'], df.loc[i, 'normal_bam'] = guess(df.loc[i, 'split_reads'], normal_bam)
             df.loc[i, 'sample'] = sample
             df.loc[i, 'bam'] = sample_bam
             df.loc[i, 'tumour_purity'] = purity
+            df.loc[i, 'sex'] = sex
 
         df.to_csv(options.outfile, sep="\t", index=False)
 
@@ -58,7 +64,8 @@ def getGroup(sample):
     elif group == 'A785-A788':
         bamgroup = 'A785'
 
-    elif group == 'D050' and int(t_id) >= 10:
+
+    elif group == 'D050' and len(t_id.split('-')) == 1 and int(t_id) >= 10:
         bamgroup = 'D050k'
     else:
         bamgroup = group
@@ -78,19 +85,32 @@ def getbam(bam_dir, bamgroup, group, t_id):
         n_id = int(t_id) + 2
         normal_bam = group + "-" + str(n_id) + '.tagged.filt.SC.RG.bam'
         sample_bam = group + "-" + str(t_id) + '.tagged.filt.SC.RG.bam'
-    elif len(t_id.split('-')) == 2:
+
+    elif bamgroup == 'D050k':
+        n_id = int(t_id) + 1
+        normal_bam = group + "R" + str(n_id) + '.tagged.filt.SC.RG.bam'
+        sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
+
+    elif t_id in ['41-1', '41-2']:
+        t_no, sid = t_id.split('-')
+        n_no = int(t_no) + 1
+        n_id = '-'.join(map(str,[n_no, sid]))
+        normal_bam = group + "R" + str(n_id) + '.tagged.filt.SC.RG.bam'
+        sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
+
+    elif t_id in ['07-1', '07-2']:
         t_no, sid = t_id.split('-')
         n_no = int(t_no) + 1
         n_id = '-'.join(map(str,[n_no, sid]))
         normal_bam = group + "R" + '0' + str(n_id) + '.tagged.filt.SC.RG.bam'
         sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
-    elif bamgroup == 'D050k':
+    elif group == 'D050':
         n_id = int(t_id) + 1
-        normal_bam = group + "R" + str(n_id) + '.tagged.filt.SC.RG.bam'
+        normal_bam = group + "R" + '0' + str(n_id) + '.tagged.filt.SC.RG.bam'
         sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
     else:
         n_id = int(t_id) + 1
-        normal_bam = group + "R" + '0' + str(n_id) + '.tagged.filt.SC.RG.bam'
+        normal_bam = group + "R" + str(n_id) + '.tagged.filt.SC.RG.bam'
         sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
 
     sample_bam = os.path.join(bam_dir, bamgroup, sample_bam)
