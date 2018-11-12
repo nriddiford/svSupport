@@ -63,6 +63,8 @@ def worker(options):
         allele_frequency, adj_ratio, rd_ratio = af.read_depth_af()
         cnv_type = classify_cnv(chrom1, adj_ratio, options.sex)
 
+        print(notes)
+
         return bp1, bp2, allele_frequency, cnv_type, rd_ratio, notes, None, None
 
     bp_regions, options.slop = get_regions(bam_in, chrom1, bp1, chrom2, bp2, out_dir, options, chrom_dict)
