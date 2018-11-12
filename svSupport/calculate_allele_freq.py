@@ -1,11 +1,13 @@
+from __future__ import division
 import math
 
 class AlleleFrequency(object):
-    def __init__(self, total_oppose, total_support, tumour_purity, chrom):
+    def __init__(self, total_oppose, total_support, tumour_purity, chrom, sex):
         self.total_oppose = total_oppose
         self.total_support = total_support
         self.tumour_purity = tumour_purity
         self.chrom = chrom
+        self.sex = sex
 
 
     def read_support_af(self):
@@ -44,6 +46,7 @@ class AlleleFrequency(object):
         t = self.total_support
         p = self.tumour_purity
         c = self.chrom
+        sex = self.sex
 
         su = abs(n - t)
         # print("Supporting reads = %s (%s-%s)") % (su, n, t)
@@ -53,29 +56,29 @@ class AlleleFrequency(object):
         r1 = round((t/n), 2)
         af = su/(op+su)
 
-        adjop = (op * p) + 0.01
+        adjop = ((1-p) * op) + 0.01
         # print("Adjusting op reads for tp: %s = %s (%s*%s)") % (p, adjop, op, p)
-
         adjaf = su/(su+adjop)
+
         # print("%s / (%s + %s)") % (su, adjop, su)
         if r1 <= 1:
             r2 = round(t/(n + adjop), 2)
         else:
             r2 = round((t + adjop)/n, 2)
 
-        if c != 'X' and c != 'Y':
+        if sex == 'XX':
             adjaf = round((adjaf/2), 2)
             af = round(af/2, 2)
         else:
-            adjaf = round(adjaf, 2)
-            af = round(af, 2)
-
-        print("* Adjusted read depth ratio = %s " % r2)
+            if c != 'X' and c != 'Y':
+                adjaf = round((adjaf/2), 2)
+                af = round(af/2, 2)
+            else:
+                adjaf = round(adjaf, 2)
+                af = round(af, 2)
 
         log2_rd_ratio = round(math.log(r2, 2), 2)
-
         print("* Log2, purity-adjusted read depth ratio = %s " % log2_rd_ratio )
-
-        print
         print("* Allele frequency adjusted from %s to %s" % (af, adjaf))
-        return(adjaf, r2)
+
+        return adjaf, r2, log2_rd_ratio
