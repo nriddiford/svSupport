@@ -25,7 +25,8 @@ def get_depth(bam_in, normal, chrom, bp1, bp2, chroms, notes, options, chrom_dic
     v = (n_read_count/length)*read_length
     # print("Av depth in region", v, av_depth)
 
-    if v/av_depth < 0.8:
+    if v/av_depth < 0.5:
+        print(v, av_depth, v/av_depth, read_length)
         notes.append("low depth in normal bam")
 
     t_contamination_fraction = t_contamination_count/t_read_count
@@ -83,6 +84,9 @@ def region_depth(bamfile, chrom, bp1, bp2, options):
     count = 0
     contamination_count = 0
     read_lengths = 0
+
+    check_read_length = 0
+
     for read in samfile.fetch(chrom, bp1, bp2):
         if read.is_unmapped:
             continue
@@ -93,8 +97,14 @@ def region_depth(bamfile, chrom, bp1, bp2, options):
         if conaminated_read:
             contamination_count += 1
             continue
-        read_lengths += read.query_alignment_length
+
+        if check_read_length < 10:
+            print(read.infer_read_length())
+            read_lengths += read.infer_read_length()
+            check_read_length += 1
+
         count += 1
-    av_read_length = read_lengths/count
+
+    av_read_length = read_lengths/check_read_length
     print("Reads in %s:%s-%s: %s") % (chrom, bp1, bp2, count)
     return count, contamination_count, av_read_length
