@@ -2,6 +2,7 @@ import os, re
 import pandas as pd
 from worker import worker
 from merge_bams import merge_bams
+from worker import rmDups
 import ntpath
 
 
@@ -22,6 +23,10 @@ def parse_config(options):
         options.purity = float(df.loc[i, 'tumour_purity'])
         options.normal_bam = df.loc[i, 'normal_bam']
         options.guess = df.loc[i, 'guess']
+        options.sex = df.loc[i, 'sex']
+
+        if df.loc[i, 'notes'] == '-': df.loc[i, 'notes'] = ''
+        if df.loc[i, 'status'] == '-': df.loc[i, 'status'] = ''
 
         genotype = df.loc[i, 'genotype']
         if genotype != 'somatic_tumour': continue
@@ -31,43 +36,114 @@ def parse_config(options):
         else:
             options.region = df.loc[i, 'position']
 
-        if options.normal_bam and df.loc[i, 'T/F'] != 'F':
+        # TODO this can be cleaned up now (seeing as we're not marking vars prior to svSupport
+        if options.guess and df.loc[i, 'status'] != 'F':
             options.find_bps = True
 
-        bp1, bp2, af, sv_type, configuration, notes = worker(options)
+        bp1, bp2, af, sv_type, configuration, notes, split_support, disc_support = worker(options)
 
-        if notes:
-            nlist = filter(None, notes)
-            nstring = '; '.join(nlist)
-            if df.loc[i, 'notes']:
-                df.loc[i, 'notes'] = nstring + "; " + df.loc[i, 'notes']
-            else: df.loc[i, 'notes'] = nstring
+        if options.normal_bam:
+            df.loc[i, 'configuration'] = sv_type
+            sv_type = df.loc[i, 'type']
+        else:
+             df.loc[i, 'configuration'] = configuration
 
-            r = re.compile(".*low read support")
-            if filter(r.match, nlist):
-                df.loc[i, 'T/F'] = 'F'
+        notes = mark_low_FC(notes, options.sex, df.loc[i, 'log2(cnv)'], sv_type, df.loc[i, 'chromosome1'], split_support)
 
-        if not 'zyg' in sv_type and sv_type != '-':
-            df.loc[i, 'type'] = sv_type
+        nlist = filter(None, notes)
+        nstring = '; '.join(nlist)
+        if df.loc[i, 'notes']:
+            df.loc[i, 'notes'] = nstring + "; " + df.loc[i, 'notes']
+        else: df.loc[i, 'notes'] = nstring
+
+        df.loc[i, 'status'] = mark_filters(notes)
+
+        # if not 'zyg' in sv_type and sv_type != '-':
+        df.loc[i, 'type'] = sv_type
+
+        if split_support is not None: df.loc[i, 'split_reads'] = split_support
+        if disc_support is not None: df.loc[i, 'disc_reads'] = disc_support
 
         df.loc[i, 'allele_frequency'] = af
         df.loc[i, 'bp1'] = bp1
         df.loc[i, 'bp2'] = bp2
-        df.loc[i, 'configuration'] = configuration
+
         if df.loc[i, 'chromosome1'] != df.loc[i, 'chromosome2']:
             df.loc[i, 'position'] = df.loc[i, 'chromosome1'] + ":" + str(bp1) + " " + df.loc[i, 'chromosome2'] + ":" + str(bp2)
         else:
             df.loc[i, 'position'] = df.loc[i, 'chromosome1'] + ":" + str(bp1) + "-" + str(bp2)
 
         if af == 0:
-            df.loc[i, 'T/F'] = 'F'
+            df.loc[i, 'status'] = 'F'
 
     mergeAll(options, sample)
 
-    df = df.drop(['bam', 'normal_bam', 'tumour_purity', 'guess', 'sample'], axis=1)
+    df = df.drop(['bam', 'normal_bam', 'tumour_purity', 'guess', 'sample', 'sex'], axis=1)
     df = df.sort_values(['chromosome1', 'bp1', 'chromosome2', 'bp2'])
     df.to_csv(outfile, sep="\t", index=False)
 
+
+def mark_low_FC(notes, sex, fc, sv_type, chrom, split_support):
+    if split_support >= 5:
+        return notes
+    elif split_support:
+        hom_pass = 0.2
+        het_pass = 0.1
+    else:
+        hom_pass = 0.6
+        het_pass = 0.4
+
+    if sv_type in ['DEL', 'DUP', 'TANDUP']:
+        if chrom in ['X', 'Y'] and sex == 'XY':
+            if abs(fc) < hom_pass:
+                notes.append("low FC")
+        elif abs(fc) < het_pass:
+            notes.append("low FC")
+        # if sex == 'XX':
+        #     if abs(fc) < 0.3:
+        #         notes.append("low FC")
+        #         status = 'F'
+        # else:
+        #     if chrom in ['X', 'Y']:
+        #         if abs(fc) < 0.58:
+        #             notes.append("low FC")
+        #             status = 'F'
+        #     else:
+        #         if abs(fc) < 0.3:
+        #             notes.append("low FC")
+        #             status = 'F'
+    return notes
+
+
+def mark_filters(notes):
+    filters = ['low read support', 'missing', 'contamination', 'low depth', 'low FC', 'excluded']
+    for n in notes:
+        for f in filters:
+            if f in n:
+                return 'F'
+
+    # if notes:
+    #     nlist = filter(None, notes)
+    #     nstring = '; '.join(nlist)
+    #
+    #     if df.loc[i, 'notes']:
+    #         df.loc[i, 'notes'] = nstring + "; " + df.loc[i, 'notes']
+    #     else: df.loc[i, 'notes'] = nstring
+    #
+    #     r = re.compile(".*low read support")
+    #     if filter(r.match, nlist):
+    #         df.loc[i, 'status'] = 'F'
+    #     # Now mark as F if missing read signature
+    #     r = re.compile(".*missing")
+    #     if filter(r.match, nlist):
+    #         sv_type = df.loc[i, 'type']
+    #         df.loc[i, 'status'] = 'F'
+    #     r = re.compile(".*contamination")
+    #     if filter(r.match, nlist):
+    #         df.loc[i, 'status'] = 'F'
+    #     r = re.compile(".*depth")
+    #     if filter(r.match, nlist):
+    #         df.loc[i, 'status'] = 'F'
 
 def mergeAll(options, sample):
     su = []
@@ -82,11 +158,20 @@ def mergeAll(options, sample):
         elif file.endswith("regions.s.bam"):
             reg.append(os.path.join(options.out_dir, file))
 
-    if(len(su)>1):
-        allsup = os.path.join(options.out_dir, sample + '_supporting.bam')
-        allop = os.path.join(options.out_dir, sample + '_opposing.bam')
-        allregions = os.path.join(options.out_dir, sample + '_regions.bam')
+    if len(su) > 1:
+        allsup = os.path.join(options.out_dir, sample + '_supporting_dirty.bam')
+        allop = os.path.join(options.out_dir, sample + '_opposing_dirty.bam')
+        allregions = os.path.join(options.out_dir, sample + '_regions_dirty.bam')
 
-        merge_bams(allsup, options.out_dir, su)
-        merge_bams(allop, options.out_dir, op)
-        merge_bams(allregions, options.out_dir, reg)
+        sumerged = merge_bams(allsup, options.out_dir, su)
+        opmerged = merge_bams(allop, options.out_dir, op)
+        remerged = merge_bams(allregions, options.out_dir, reg)
+
+        merged_su_nodups = os.path.join(sample + '_supporting.bam')
+        merged_op_nodups = os.path.join(sample + '_opposing.bam')
+        merged_regs_nodups = os.path.join(sample + '_regions.bam')
+
+        rmDups(sumerged, merged_su_nodups, options.out_dir)
+        rmDups(opmerged, merged_op_nodups, options.out_dir)
+        rmDups(remerged, merged_regs_nodups, options.out_dir)
+

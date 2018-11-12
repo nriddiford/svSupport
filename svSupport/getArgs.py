@@ -27,6 +27,12 @@ def get_args():
                       help="A file listing chromosome names to consider for normal mapping",
                       metavar="FILE")
 
+    parser.add_option("--non_native_chromosomes",
+                      dest="nn_chroms",
+                      action="store",
+                      help="A file listing non-native chroms",
+                      metavar="FILE")
+
     parser.add_option("-p",
                       "--purity",
                       dest="purity",
@@ -56,6 +62,10 @@ def get_args():
                       help="The chromosome and breakpoints for a " +
                            "structural variant in the format: " +
                            "'chrom:bp_1-bp_2' or 'chrom1:bp_1-chrom2:bp_2")
+    parser.add_option("--sex",
+                      dest="sex",
+                      action="store",
+                      help="Sex of individual: XX, XY [Default: XY] ")
 
     parser.add_option("-o",
                       "--out_dir",
@@ -97,7 +107,8 @@ def get_args():
 
     parser.set_defaults(out_dir='out',
                         purity=1,
-                        chromfile='chroms.txt')
+                        chromfile='chrom_lengths.txt',
+                        nn_chroms='non_native_chroms.txt')
 
     options, args = parser.parse_args()
 

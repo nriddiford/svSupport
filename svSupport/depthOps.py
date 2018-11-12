@@ -1,7 +1,8 @@
 from __future__ import division
 import pysam
+from getReads import filterContamination
 
-def get_depth(bam_in, normal, chrom, bp1, bp2, chroms):
+def get_depth(bam_in, normal, chrom, bp1, bp2, chroms, notes, options, chrom_dict):
     """Get the number of mapped reads in both t and n bams accross all chroms
        Then get the number of mapped reads within the CNV region
        """
@@ -11,28 +12,45 @@ def get_depth(bam_in, normal, chrom, bp1, bp2, chroms):
         chromosomes = [chrom]
 
     t_reads_by_chrom, tumour_mapped = count_reads(bam_in, chromosomes)
-    t_read_count = region_depth(bam_in, chrom, bp1, bp2)
+    t_read_count, t_contamination_count, read_length = region_depth(bam_in, chrom, bp1, bp2, options)
 
     n_reads_by_chrom, normal_mapped = count_reads(normal, chromosomes)
-    n_read_count = region_depth(normal, chrom, bp1, bp2)
+    n_read_count, n_contamination_count, read_length = region_depth(normal, chrom, bp1, bp2, options)
 
     """Mark as FP CN events where #reads/length < fraction"""
-    # length = bp2 - bp1
-    # v = n_read_count/length
+
+    av_depth = n_reads_by_chrom[chrom]*read_length/int(chrom_dict[chrom])
+
+    length = bp2 - bp1
+    v = (n_read_count/length)*read_length
+    # print("Av depth in region", v, av_depth)
+
+    if v/av_depth < 0.8:
+        notes.append("low depth in normal bam")
+
+    t_contamination_fraction = t_contamination_count/t_read_count
+    n_contamination_fraction = n_contamination_count/n_read_count
+
+    if t_contamination_fraction >= 0.1 or n_contamination_fraction > 0.1:
+        note = ' '.join(map(str, ["t_contamination:",t_contamination_count, "n_contamination:",n_contamination_count]))
+        notes.append(note)
 
     mapped_ratio = tumour_mapped / normal_mapped
 
     # Changed from mapped_ratio < 1 - 3.8.18
-    if mapped_ratio >= 1:
-        t_corr = t_read_count
-        n_corr = int(round((n_read_count * mapped_ratio)))
-    else:
-        n_corr = n_read_count
-        t_corr = round((t_read_count * mapped_ratio))
+    # if mapped_ratio >= 1:
+    #     t_corr = t_read_count
+    #     n_corr = int(round((n_read_count * mapped_ratio)))
+    # else:
+    #     n_corr = n_read_count
+    #     t_corr = int(round((t_read_count * mapped_ratio)))
+
+    t_corr = t_read_count
+    n_corr = int(round((n_read_count * mapped_ratio)))
 
     adj_ratio = round((t_corr / n_corr), 2)
 
-    return (n_corr, t_corr, adj_ratio)
+    return n_corr, t_corr, adj_ratio, notes
 
 
 def count_reads(bamfile, chromosomes):
@@ -55,20 +73,28 @@ def count_reads(bamfile, chromosomes):
             total_mapped += int(mapped)
 
     print("Total number of mapped reads on chroms %s %s: %s") % (chromosomes, bamfile, total_mapped)
-    return(total_mapped_chrom, total_mapped)
+    return total_mapped_chrom, total_mapped
 
 
-def region_depth(bamfile, chrom, bp1, bp2):
+def region_depth(bamfile, chrom, bp1, bp2, options):
     """Count the total number of mapped reads in a genomic region"""
 
     samfile = pysam.Samfile(bamfile, "rb")
     count = 0
+    contamination_count = 0
+    read_lengths = 0
     for read in samfile.fetch(chrom, bp1, bp2):
         if read.is_unmapped:
             continue
-        if read.mapq < 3:
+        elif read.mapq < 3:
             continue
-        count += 1
 
+        conaminated_read, contaminated_at_bp = filterContamination(read, bp1, options)
+        if conaminated_read:
+            contamination_count += 1
+            continue
+        read_lengths += read.query_alignment_length
+        count += 1
+    av_read_length = read_lengths/count
     print("Reads in %s:%s-%s: %s") % (chrom, bp1, bp2, count)
-    return(count)
+    return count, contamination_count, av_read_length
