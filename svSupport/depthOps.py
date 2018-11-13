@@ -17,24 +17,15 @@ def get_depth(bam_in, normal, chrom, bp1, bp2, chroms, notes, options, chrom_dic
     n_reads_by_chrom, normal_mapped = count_reads(normal, chromosomes)
     n_read_count, n_contamination_count, read_length = region_depth(normal, chrom, bp1, bp2, options)
 
-    """Mark as FP CN events where #reads/length < fraction"""
-
     av_depth = n_reads_by_chrom[chrom]*read_length/int(chrom_dict[chrom])
 
     length = bp2 - bp1
     v = (n_read_count/length)*read_length
     # print("Av depth in region", v, av_depth)
 
-    if v/av_depth < 0.5:
+    if v/av_depth < 0.5 and v < 15:
         print(v, av_depth, v/av_depth, read_length)
         notes.append("low depth in normal bam")
-
-    t_contamination_fraction = t_contamination_count/t_read_count
-    n_contamination_fraction = n_contamination_count/n_read_count
-
-    if t_contamination_fraction >= 0.1 or n_contamination_fraction > 0.1:
-        note = ' '.join(map(str, ["t_contamination:",t_contamination_count, "n_contamination:",n_contamination_count]))
-        notes.append(note)
 
     mapped_ratio = tumour_mapped / normal_mapped
 
@@ -50,6 +41,15 @@ def get_depth(bam_in, normal, chrom, bp1, bp2, chroms, notes, options, chrom_dic
     n_corr = int(round((n_read_count * mapped_ratio)))
 
     adj_ratio = round((t_corr / n_corr), 2)
+
+    t_contamination_fraction = (t_contamination_count + 0.01)/t_read_count
+    n_contamination_fraction = (n_contamination_count + 0.01)/n_read_count
+
+    contamination_ratio = (t_contamination_fraction + 0.01) / (n_contamination_fraction + 0.01)
+
+    if t_contamination_fraction >= 0.1 and contamination_ratio >= 2 and adj_ratio > 1:
+        note = ' '.join(map(str, ["t_contamination:", t_contamination_count, "n_contamination:", n_contamination_count]))
+        notes.append(note)
 
     return n_corr, t_corr, adj_ratio, notes
 
@@ -98,8 +98,7 @@ def region_depth(bamfile, chrom, bp1, bp2, options):
             contamination_count += 1
             continue
 
-        if check_read_length < 10:
-            print(read.infer_read_length())
+        if check_read_length < 100:
             read_lengths += read.infer_read_length()
             check_read_length += 1
 

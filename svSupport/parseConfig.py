@@ -57,8 +57,6 @@ def parse_config(options):
         else: df.loc[i, 'notes'] = nstring
 
         df.loc[i, 'status'] = mark_filters(notes)
-
-        # if not 'zyg' in sv_type and sv_type != '-':
         df.loc[i, 'type'] = sv_type
 
         if split_support is not None: df.loc[i, 'split_reads'] = split_support
@@ -99,19 +97,7 @@ def mark_low_FC(notes, sex, fc, sv_type, chrom, split_support):
                 notes.append("low FC")
         elif abs(fc) < het_pass:
             notes.append("low FC")
-        # if sex == 'XX':
-        #     if abs(fc) < 0.3:
-        #         notes.append("low FC")
-        #         status = 'F'
-        # else:
-        #     if chrom in ['X', 'Y']:
-        #         if abs(fc) < 0.58:
-        #             notes.append("low FC")
-        #             status = 'F'
-        #     else:
-        #         if abs(fc) < 0.3:
-        #             notes.append("low FC")
-        #             status = 'F'
+
     return notes
 
 
@@ -121,29 +107,6 @@ def mark_filters(notes):
         for f in filters:
             if f in n:
                 return 'F'
-
-    # if notes:
-    #     nlist = filter(None, notes)
-    #     nstring = '; '.join(nlist)
-    #
-    #     if df.loc[i, 'notes']:
-    #         df.loc[i, 'notes'] = nstring + "; " + df.loc[i, 'notes']
-    #     else: df.loc[i, 'notes'] = nstring
-    #
-    #     r = re.compile(".*low read support")
-    #     if filter(r.match, nlist):
-    #         df.loc[i, 'status'] = 'F'
-    #     # Now mark as F if missing read signature
-    #     r = re.compile(".*missing")
-    #     if filter(r.match, nlist):
-    #         sv_type = df.loc[i, 'type']
-    #         df.loc[i, 'status'] = 'F'
-    #     r = re.compile(".*contamination")
-    #     if filter(r.match, nlist):
-    #         df.loc[i, 'status'] = 'F'
-    #     r = re.compile(".*depth")
-    #     if filter(r.match, nlist):
-    #         df.loc[i, 'status'] = 'F'
 
 def mergeAll(options, sample):
     su = []
