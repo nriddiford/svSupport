@@ -9,3 +9,10 @@ svSupport/test/test_out/*
 *_svSupport.txt
 data/*
 out/*
+.Rproj.user
+.Rhistory
+.cache
+.idea
+.pytest_cache
+svSupport.Rproj
+svSupport.egg-info
