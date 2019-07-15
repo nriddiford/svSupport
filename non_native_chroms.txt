@@ -1,0 +1,15 @@
+Wolbachia
+Tomelloso
+K.nataicola
+A.pasteurianus_NC_013209.1
+A.pasteurianus_NC_013210.1
+A.pasteurianus_NC_013211.1
+A.pasteurianus_NC_013212.1
+A.pasteurianus_NC_013213.1
+A.pasteurianus_NC_013214.1
+A.pasteurianus_NC_013215.1
+mitochondrion_genome
+E.coli
+K.nataicola
+Tomelloso
+Wolbachia
