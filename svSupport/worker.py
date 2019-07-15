@@ -206,7 +206,6 @@ def worker(options):
         susorted = merge_bams(suout, out_dir, [bp1_clipped_bam, bp2_clipped_bam, bp1_disc_bam, bp2_disc_bam])
         merge_bams(opout, out_dir, [bp1_opposing_reads, bp2_opposing_reads])
 
-
     snodups = os.path.join(svID + '_supporting.s.bam')
     rmDups(susorted, snodups, out_dir)
 
