@@ -20,6 +20,8 @@ def makeConfig(options):
 
         if group in ['D050k', 'D050']:
             sex = 'XX'
+        elif group == 'D106' and int(t_id) < 23:
+            sex = 'XX'
         else:
             sex = 'XY'
 
