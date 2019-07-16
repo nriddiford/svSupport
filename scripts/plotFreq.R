@@ -57,7 +57,6 @@ slideTheme <- function(base_size = 25) {
 #' @keywords bed
 #' @import dplyr
 #' @export
-
 readBed <- function(bed_in = NULL, annotated_file=FALSE){
   if(annotated_file){
     f <- read.delim(bed_in, header=T)
@@ -84,7 +83,7 @@ plot_allele_freqs <- function(..., all_samples = '~/Desktop/script_test/alleleFr
                               all_samples_indels = '~/Desktop/script_test/mutationProfiles/data/annotated_indels.txt',
                               tes=F,
                               annotate_with = '~/Desktop/gene2bed/bed/dna_damage_repair.bed',
-                              by='fraction', snvs=T, indels=T, hit_gene='N', show_subclonal=T, exclude=T){
+                              by='fraction', snvs=T, indels=T, drivers='N', show_subclonal=T, exclude=T){
   all_data <- read.delim(all_samples, header = T)
   
   geneIn <- function(gene, gene_list) {
@@ -96,14 +95,14 @@ plot_allele_freqs <- function(..., all_samples = '~/Desktop/script_test/alleleFr
   
   # all_data <- all_data %>% dplyr::filter(type != 'DUP')
   
-  gene_hits <- all_data %>% 
+  driver_hits <- all_data %>% 
     dplyr::filter(...,
                   !status %in% c('F', 'aF')) %>% 
     dplyr::rename(length = length.Kb.,
                   cn     = log2.cnv.) %>% 
     dplyr::mutate(type_decomposed = as.character(ifelse(str_detect(type, 'COMPLEX'), 'COMPLEX', as.character(type)))) %>%
     group_by(sample, event) %>% 
-    dplyr::mutate(newCol = as.character(ifelse(any(geneIn(hit_gene, affected_genes)),'Notch', 'Other'))) %>% 
+    dplyr::mutate(driver_hit = as.character(ifelse(any(geneIn(drivers, affected_genes)),'Notch', 'Other'))) %>% 
     dplyr::mutate(special_hit = as.character(ifelse(any(geneIn(bed_file$gene, affected_genes)),'Hit', 'Other'))) %>% 
     
     dplyr::mutate(cell_fraction = ifelse(chromosome1 %in% c("X", "Y"), allele_frequency,
@@ -111,13 +110,13 @@ plot_allele_freqs <- function(..., all_samples = '~/Desktop/script_test/alleleFr
     dplyr::group_by(sample) %>%
     # dplyr::mutate(psTime = rescale(-distinct(cell_fraction))) %>% 
     dplyr::ungroup() %>% 
-    dplyr::select(sample, type_decomposed, newCol, allele_frequency, cell_fraction, affected_genes, special_hit) %>% 
+    dplyr::select(sample, type_decomposed, driver_hit, allele_frequency, cell_fraction, affected_genes, special_hit) %>% 
     droplevels()
   
   
-  new_df <- gene_hits %>% 
+  new_df <- driver_hits %>% 
     dplyr::group_by(sample) %>% 
-    dplyr::mutate(highest_n = ifelse(any(newCol == 'Notch'), max(cell_fraction[newCol=='Notch']), 0)) %>% 
+    dplyr::mutate(highest_n = ifelse(any(driver_hit == 'Notch'), max(cell_fraction[driver_hit=='Notch']), 0)) %>% 
     dplyr::distinct(sample, highest_n) %>% 
     ungroup()
   
@@ -169,7 +168,7 @@ plot_allele_freqs <- function(..., all_samples = '~/Desktop/script_test/alleleFr
   
     if(by=='fraction'){
       if(show_subclonal){
-        p <- p + geom_jitter(data=gene_hits, aes(sample, -cell_fraction, group=sample, colour = sample), size=2, width = 0.3, alpha = 0.9, show.legend = FALSE)
+        p <- p + geom_jitter(data=driver_hits, aes(sample, -cell_fraction, group=sample, colour = sample), size=2, width = 0.3, alpha = 0.9, show.legend = FALSE)
         if(snvs){
           p <- p + geom_jitter(data=snv_hits, aes(sample, -cell_fraction, group=sample, colour = sample), shape=4, size=.5, width = 0.3, alpha = 0.2, show.legend = FALSE)
         }
@@ -183,7 +182,7 @@ plot_allele_freqs <- function(..., all_samples = '~/Desktop/script_test/alleleFr
       p <- p + scale_y_continuous('Fraction of cells with mutation', labels=seq(1,0,by=-.25))
     } else{
       if(show_subclonal){
-        p <- p + geom_jitter(data=gene_hits, aes(sample, -allele_frequency, group=sample, colour = sample), size=2, width = 0.3, alpha = 0.9, show.legend = FALSE)
+        p <- p + geom_jitter(data=driver_hits, aes(sample, -allele_frequency, group=sample, colour = sample), size=2, width = 0.3, alpha = 0.9, show.legend = FALSE)
         if(snvs){
           p <- p + geom_jitter(data=snv_hits, aes(sample, -allele_frequency, group=sample, colour = sample), shape=4, size=.5, width = 0.3, alpha = 0.2, show.legend = FALSE)
         }
@@ -214,19 +213,19 @@ geneIn <- function(gene, gene_list) {
 }
 
 
-get_SVs <- function(..., all_samples, bed_file, hit_gene){
+get_SVs <- function(..., all_samples, bed_file, drivers){
   cat("Reading SV data...\n")
   
   all_data <- read.delim(all_samples, header = T)
   
-  gene_hits <- all_data %>% 
+  driver_hits <- all_data %>% 
     dplyr::filter(
                   !status %in% c('F', 'aF')) %>% 
     dplyr::rename(length = length.Kb.,
                   cn     = log2.cnv.) %>% 
     dplyr::mutate(type_decomposed = as.character(ifelse(str_detect(type, 'COMPLEX'), 'COMPLEX', as.character(type)))) %>%
     dplyr::group_by(sample, event) %>% 
-    dplyr::mutate(newCol = as.character(ifelse(any(geneIn(hit_gene, affected_genes)),'Notch', 'Other'))) %>% 
+    dplyr::mutate(driver_hit = as.character(ifelse(any(geneIn(drivers, affected_genes)),'Notch', 'Other'))) %>% 
     dplyr::mutate(special_hit = as.character(ifelse(any(geneIn(bed_file$gene, affected_genes)), 'Hit', 'Other'))) %>% 
     dplyr::mutate(cell_fraction = ifelse(chromosome1 %in% c("X", "Y"), allele_frequency,
                                          ifelse(allele_frequency*2>1, 1,allele_frequency*2))) %>%
@@ -234,14 +233,14 @@ get_SVs <- function(..., all_samples, bed_file, hit_gene){
     # dplyr::group_by(sample) %>%
     # dplyr::mutate(psTime = rescale(-distinct(cell_fraction))) %>% 
     dplyr::ungroup() %>% 
-    dplyr::select(sample, allele_frequency, cell_fraction, class, newCol, special_hit) %>% 
+    dplyr::select(sample, allele_frequency, cell_fraction, class, driver_hit, special_hit) %>% 
     droplevels()
 
-  return(as.data.frame(gene_hits))
+  return(as.data.frame(driver_hits))
 }
 
 
-get_SNVs <- function(..., all_samples_snvs, bed_file, hit_gene){
+get_SNVs <- function(..., all_samples_snvs, bed_file, drivers){
   cat("Reading SNV data...\n")
   
   snv_data <- read.delim(all_samples_snvs, header = T)
@@ -252,16 +251,16 @@ get_SNVs <- function(..., all_samples_snvs, bed_file, hit_gene){
     dplyr::mutate(cell_fraction = ifelse(chromosome %in% c("X", "Y"), allele_frequency,
                                          ifelse(allele_frequency*2>1, 1, allele_frequency*2)),
                   class="SNV") %>%
-    dplyr::mutate(newCol = as.character(ifelse(status %in% c('HIGH', 'MODERATE') & gene %in% hit_gene, 'Notch', 'Other'))) %>% 
+    dplyr::mutate(driver_hit = as.character(ifelse(status %in% c('HIGH', 'MODERATE') & gene %in% drivers, 'Notch', 'Other'))) %>% 
     dplyr::mutate(special_hit = as.character(ifelse(status %in% c('HIGH', 'MODERATE') & tolower(gene) %in% bed_file$gene, as.character(gene), 'Other'))) %>% 
-    dplyr::select(sample, allele_frequency, cell_fraction, class, newCol, special_hit) %>% 
+    dplyr::select(sample, allele_frequency, cell_fraction, class, driver_hit, special_hit) %>% 
     droplevels()
   
   return(as.data.frame(snv_hits))
 }
 
 
-get_INDELs <- function(..., all_samples_indels, bed_file, hit_gene){
+get_INDELs <- function(..., all_samples_indels, bed_file, drivers){
   cat("Reading INDEL data...\n")
   
   indel_data <- read.delim(all_samples_indels, header = T)
@@ -273,48 +272,46 @@ get_INDELs <- function(..., all_samples_indels, bed_file, hit_gene){
                                          ifelse(allele_frequency*2>1, 1,allele_frequency*2)),
                   class="INDEL") %>%
     # dplyr::group_by(sample, chromosome, pos) %>% 
-    dplyr::mutate(newCol = as.character(ifelse(status %in% c('HIGH', 'MODERATE') & gene %in% hit_gene, 'Notch', 'Other'))) %>% 
+    dplyr::mutate(driver_hit = as.character(ifelse(status %in% c('HIGH', 'MODERATE') & gene %in% drivers, 'Notch', 'Other'))) %>% 
     dplyr::mutate(special_hit = as.character(ifelse(status %in% c('HIGH', 'MODERATE') & tolower(gene) %in% bed_file$gene, as.character(gene), 'Other'))) %>% 
-    dplyr::select(sample, allele_frequency, cell_fraction, class, newCol, special_hit) %>% 
+    dplyr::select(sample, allele_frequency, cell_fraction, class, driver_hit, special_hit) %>% 
     droplevels()
   
   return(as.data.frame(indel_hits))
 }
 
 
-get_TEs <- function(..., all_samples_tes, bed_file, hit_gene){
+get_TEs <- function(..., all_samples_tes, bed_file, drivers){
   cat("Reading TE data...\n")
   te_data <- read.delim(all_samples_tes, header = F)
   
   colnames(te_data) <- c("sample", "bp_no", "caller", "genotype", "chromosome1", "bp1", "gene1", "feature1", "chromosome2", "bp2", "gene2", "feature2", "type", "somefield", "allele_frequency", "confidence")
   
   te_data <- te_data %>% 
-    dplyr::filter(bp_no == 'bp1') %>% 
+    dplyr::filter(...,
+                  bp_no == 'bp1') %>% 
     tidyr::separate(sample, into = c("sample", "event"), sep = "_") %>% 
     dplyr::mutate(cell_fraction = ifelse(chromosome1 %in% c("X", "Y"), allele_frequency,
                                          ifelse(allele_frequency*2>1, 1,allele_frequency*2))) %>%
     dplyr::mutate(shortName = sample,
                   class = 'TE') %>% 
-    dplyr::mutate(shortName = factor(shortName)) %>% 
-    # dplyr::mutate(shortName =  ifelse(shortName == "R41A", "R41-1", as.character(shortName)),
-    #               shortName = ifelse(shortName == "R41B", "R41-2", as.character(shortName)),
-    #               shortName = factor(shortName)) %>%
-    dplyr::mutate(newCol = as.character(ifelse(gene1 %in% hit_gene, 'Notch', 'Other'))) %>% 
-    dplyr::mutate(special_hit = as.character(ifelse(tolower(gene1) %in% bed_file$gene, as.character(gene1), 'Other'))) %>% 
+    dplyr::mutate(shortName = factor(shortName)) %>%
+    dplyr::mutate(driver_hit = as.character(ifelse(!feature1 %in% c('intergenic', 'intron') & gene1 %in% drivers, 'Notch', 'Other'))) %>% 
+    dplyr::mutate(special_hit = as.character(ifelse(!feature1 %in% c('intergenic', 'intron') & tolower(gene1) %in% bed_file$gene, as.character(gene1), 'Other'))) %>% 
     droplevels()
   
   te_data <- convert_names(x=te_data, short_to_long=T)
   te_data <- te_data %>% 
-    dplyr::select(sample, allele_frequency, cell_fraction, class, newCol, special_hit)
+    dplyr::select(sample, allele_frequency, cell_fraction, class, driver_hit, special_hit)
   
   return(te_data)
 }
 
 
-highest_N <- function(gene_hits){
-  new_df <- gene_hits %>% 
+highest_N <- function(driver_hits){
+  new_df <- driver_hits %>% 
     dplyr::group_by(sample) %>% 
-    dplyr::mutate(highest_n = ifelse(any(newCol == 'Notch'), max(cell_fraction[newCol=='Notch']), 0)) %>% 
+    dplyr::mutate(highest_n = ifelse(any(driver_hit == 'Notch'), max(cell_fraction[driver_hit=='Notch']), 0)) %>% 
     dplyr::distinct(sample, highest_n) %>% 
     ungroup() %>% 
     as.data.frame()
@@ -365,24 +362,24 @@ plot_tumour_evolution <- function(..., all_samples = '~/Desktop/script_test/alle
                               all_samples_snvs = '~/Desktop/script_test/mutationProfiles/data/annotated_snvs.txt',
                               all_samples_indels = '~/Desktop/script_test/mutationProfiles/data/annotated_indels.txt',
                               all_samples_tes = '/Users/Nick_curie/Desktop/Analysis_pipelines/TEs/all_bps.txt',
-                              annotate_with = '~/Desktop/gene2bed/bed/dna_damage_repair.bed', hit_gene=c('N', 'kuz'),
+                              annotate_with = '~/Desktop/gene2bed/bed/dna_damage_repair.bed', drivers=c('N', 'kuz'),
                               snvs=T, indels=T, tes=T){
   
   bed_file <- readBed(bed_in = annotate_with)
   colnames(bed_file) <- c("chrom", "start", "end", "gene", "id")
-  gene_hits <- get_SVs(all_samples=all_samples, bed_file=bed_file, hit_gene=hit_gene)
-  Notch_svs <- highest_N(gene_hits)
+  driver_hits <- get_SVs(all_samples=all_samples, bed_file=bed_file, drivers=drivers)
+  Notch_svs <- highest_N(driver_hits)
   
-  if(snvs) snv_hits <- get_SNVs( all_samples_snvs = all_samples_snvs, bed_file=bed_file, hit_gene=hit_gene)
+  if(snvs) snv_hits <- get_SNVs( all_samples_snvs = all_samples_snvs, bed_file=bed_file, drivers=drivers)
   Notch_snvs <- highest_N(snv_hits)
   
-  if(indels) indel_hits <- get_INDELs(all_samples_indels = all_samples_indels, bed_file=bed_file, hit_gene=hit_gene)
+  if(indels) indel_hits <- get_INDELs(all_samples_indels = all_samples_indels, bed_file=bed_file, drivers=drivers)
   Notch_indels <- highest_N(indel_hits)
   
-  if(tes) te_hits <- get_TEs(all_samples_tes = all_samples_tes, bed_file=bed_file, hit_gene=hit_gene)
+  if(tes) te_hits <- get_TEs(all_samples_tes = all_samples_tes, bed_file=bed_file, drivers=drivers)
   Notch_tes <- highest_N(te_hits)
   
-  df <- do.call("rbind", list(indel_hits, snv_hits, gene_hits, te_hits))
+  df <- do.call("rbind", list(indel_hits, snv_hits, driver_hits, te_hits))
   
   # Get max Notch accross all mut types
   Notch_hits <- merge(Notch_svs,  Notch_snvs,   by = "sample", all = TRUE)
