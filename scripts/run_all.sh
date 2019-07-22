@@ -22,7 +22,7 @@ function getBase(){
   echo $name
 }
 
-bamdir=/Users/Nick_curie/Desktop/Mount/Bwa
+bamdir=/Volumes/perso/Analysis/Bwa
 variants=/Users/Nick_curie/Desktop/parserTest/filtered4/summary/merged
 out_dir=/Users/Nick_curie/Desktop/script_test/svSupport/out
 purity=/Users/Nick_curie/Desktop/script_test/svSupport/data/tumour_purity.txt

@@ -59,14 +59,10 @@ def getGroup(sample):
 
     if group == 'A373':
         bamgroup = 'A370'
-
     elif group == 'A573':
         bamgroup = 'A572'
-
     elif group == 'A785-A788':
         bamgroup = 'A785'
-
-
     elif group == 'D050' and len(t_id.split('-')) == 1 and int(t_id) >= 10:
         bamgroup = 'D050k'
     else:
@@ -156,9 +152,9 @@ def get_args():
                       action = "store",
                       help = "File to annotated variants file to")
 
-    parser.set_defaults(bam_dir = '/Users/Nick_curie/Desktop/Mount/Bwa',
-                        outfile = '/Users/Nick_curie/Desktop/script_test/svSupport/data/config.txt',
-                        purity_file = '/Users/Nick_curie/Desktop/script_test/svSupport/data/tumour_purity.txt'
+    parser.set_defaults(bam_dir='/Volumes/perso/Analysis/Bwa',
+                        outfile='/Users/Nick_curie/Desktop/script_test/svSupport/data/config.txt',
+                        purity_file='/Users/Nick_curie/Desktop/script_test/svSupport/data/tumour_purity.txt'
                         )
 
     options, args = parser.parse_args()
