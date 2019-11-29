@@ -18,6 +18,4 @@ cd svSupport
 pip install .
 ```
 
-
-
 ### Find support for
