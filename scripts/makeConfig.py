@@ -11,9 +11,7 @@ def makeConfig(options):
     with open(options.variants, 'r') as variants:
         purity = get_purity(options)
         sample, group, bamgroup, t_id = getGroup(options.sample)
-        print(bamgroup)
         sample_bam, normal_bam = getbam(options.bam_dir, bamgroup, group, t_id)
-
         df = pd.read_csv(variants, delimiter="\t", index_col=False)
 
         if len(df.index) == 0: sys.exit("No variants in file. Exiting")
@@ -21,6 +19,8 @@ def makeConfig(options):
         if group in ['D050k', 'D050']:
             sex = 'XX'
         elif group == 'D106' and int(t_id) < 23:
+            sex = 'XX'
+        elif group == 'D197' and str(t_id) in ['09', '11', '13', '15']:
             sex = 'XX'
         else:
             sex = 'XY'
@@ -106,11 +106,17 @@ def getbam(bam_dir, bamgroup, group, t_id):
         n_id = int(t_id) + 1
         normal_bam = group + "R" + '0' + str(n_id) + '.tagged.filt.SC.RG.bam'
         sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
+    elif group == 'D197' and str(t_id) in ['01', '03', '05', '07']:
+         n_id = int(str(t_id)[-1]) + 1
+         normal_bam = group + "R" + '0' + str(n_id) + '.tagged.filt.SC.RG.bam'
+         sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
+
     else:
         n_id = int(t_id) + 1
         normal_bam = group + "R" + str(n_id) + '.tagged.filt.SC.RG.bam'
         sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
 
+    print("Normal: %s Tum: %s", (normal_bam, sample_bam))
     sample_bam = os.path.join(bam_dir, bamgroup, sample_bam)
     normal_bam = os.path.join(bam_dir, bamgroup, normal_bam)
 
