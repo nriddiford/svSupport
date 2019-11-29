@@ -1,4 +1,6 @@
 import re
+import json
+
 from collections import defaultdict
 from utils import *
 from classifyEvent import classify_sv, classify_cnv
@@ -7,7 +9,6 @@ from depthOps import get_depth
 from findBreakpoints import find_breakpoints
 from calculate_allele_freq import AlleleFrequency
 from filterReads import filter_reads
-import json
 
 from merge_bams import *
 
