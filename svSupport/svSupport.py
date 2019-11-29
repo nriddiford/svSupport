@@ -18,9 +18,9 @@ def main():
         sys.exit()
 
     elif options.test:
-        print
+        print()
         print("* Running in test mode...")
-        print
+        print()
 
         options.region = '3L:9892365-9894889'
         options.out_dir = 'test/test_out'
