@@ -217,7 +217,22 @@ plot_allele_freqs <- function(..., all_samples = '~/Desktop/script_test/alleleFr
 
 
 geneIn <- function(gene, gene_list) {
-  return(sapply(as.character(gene_list), function(x) gene %in% strsplit(x, ", ")[[1]], USE.NAMES=FALSE))
+  # hits <- sapply(as.character(gene_list), function(x) tolower(gene) %in% tolower(strsplit(x, ", ")[[1]]), USE.NAMES=FALSE)
+  affected_genes <- gene_list
+  genes <- gene
+  # if(!strsplit(affected_genes, ", ")[[1]]) return(FALSE)
+  i <- which(tolower(genes) %in% tolower(strsplit(affected_genes, ", ")[[1]]))
+  if(length(i)){
+    l = list()
+    for (h in 1:length(i)){
+      l[h] = as.character(gene[[h]])
+    }
+    return(paste(l, collapse = ','))
+  }
+  return("Other")
+  # i <- match(, genes)
+  
+  # return(sapply(as.character(gene_list), function(x) tolower(gene) %in% tolower(strsplit(x, ", ")[[1]]), USE.NAMES=FALSE))
 }
 
 
@@ -226,24 +241,43 @@ get_SVs <- function(..., all_samples, bed_file, drivers){
   
   all_data <- read.delim(all_samples, header = T)
   
-  gene_hits <- all_data %>% 
+  all_data$affected_genes <- as.character(all_data$affected_genes)
+
+  gene_hits <- all_data %>%
     dplyr::filter(
-                  !status %in% c('F', 'aF')) %>% 
+      !status %in% c('F', 'aF')) %>%
     dplyr::rename(length = length.Kb.,
-                  cn     = log2.cnv.) %>% 
+                  cn     = log2.cnv.) %>%
     dplyr::mutate(type_decomposed = as.character(ifelse(str_detect(type, 'COMPLEX'), 'COMPLEX', as.character(type)))) %>%
-    dplyr::group_by(sample, event) %>% 
-    dplyr::mutate(gene_hit = as.character(ifelse(any(geneIn(drivers, affected_genes)),'Notch', 'Other'))) %>% 
-    dplyr::mutate(special_hit = as.character(ifelse(type %in% c("COMPLEX", "DEL") && any(geneIn(bed_file$gene, affected_genes)), 'Hit', 'Other'))) %>% 
+    dplyr::group_by(sample, event) %>%
+    dplyr::mutate(affected_genes = paste0(affected_genes, collapse = ", ")) %>% 
+    # dplyr::mutate(gene_hit = ifelse(geneIn(drivers, affected_genes),'Notch', 'Other')) %>%
+    # dplyr::mutate(special_hit = as.character(ifelse(type %in% c("COMPLEX", "DEL") && any(geneIn(bed_file$gene, affected_genes)), 'Hit', 'Other'))) %>%
+    dplyr::mutate(gene_hit = as.character(geneIn(drivers, affected_genes)), "Other") %>% 
+    dplyr::mutate(gene_hit = as.character(ifelse(gene_hit != "Other", "Notch", "Other"))) %>% 
+    dplyr::mutate(special_hit = ifelse(type %in% c("COMPLEX", "DEL"), as.character(geneIn(bed_file$gene, affected_genes)), "Other")) %>% 
+    
     dplyr::mutate(cell_fraction = ifelse(chromosome1 %in% c("X", "Y"), allele_frequency,
                                          ifelse(allele_frequency*2>1, 1,allele_frequency*2))) %>%
-    # dplyr::mutate(cell_fraction = ifelse(sample %in% females && (chromosome1 == "X" || chromosome2 == "X"), cell_fraction*2, cell_fraction)) %>% 
-    dplyr::mutate(class = 'SV') %>% 
-    # dplyr::group_by(sample) %>%
-    # dplyr::mutate(psTime = rescale(-distinct(cell_fraction))) %>% 
-    dplyr::ungroup() %>% 
-    dplyr::select(sample, allele_frequency, cell_fraction, class, gene_hit, special_hit) %>% 
+    dplyr::mutate(class = 'SV') %>%
+    dplyr::ungroup() %>%
+    dplyr::select(sample, allele_frequency, cell_fraction, class, gene_hit, special_hit) %>%
     droplevels()
+
+  
+  # all_data %>% 
+  #   dplyr::filter(
+  #                 !status %in% c('F', 'aF')) %>% 
+  #   dplyr::rename(length = length.Kb.,
+  #                 cn     = log2.cnv.) %>% 
+  #   dplyr::mutate(type_decomposed = as.character(ifelse(str_detect(type, 'COMPLEX'), 'COMPLEX', as.character(type)))) %>%
+  #   dplyr::group_by(sample, event) %>% 
+  #   dplyr::mutate(gene_hit = as.character(geneIn(drivers, affected_genes))) %>% 
+  #   dplyr::ungroup() %>% 
+  #   dplyr::select(sample, allele_frequency, gene_hit, affected_genes) %>% 
+  #   droplevels() %>% 
+  #   View()
+
 
   return(as.data.frame(gene_hits))
 }
