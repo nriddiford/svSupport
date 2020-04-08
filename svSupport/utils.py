@@ -45,7 +45,7 @@ def print_options(bam_in, ratio, chrom, bp1, bp2, find_bps, debug, test, out_dir
     for index, (value1, value2) in enumerate(zip(options, args)):
          print("o %s: %s") % (value1, value2)
     print("--------")
-    print("python svSupport.py -i %s -l %s:%s-%s -f %s -t %s -d %d -o %s") % (bam_in, chrom, bp1, bp2, find_bps, test, debug, out_dir )
+    print("python svSupport.py -i %s -l %s:%s-%s -f %s -t %s -d %d -o %s") % (bam_in, chrom, bp1, bp2, find_bps, test, debug, out_dir)
     print("--------")
 
 
@@ -65,6 +65,7 @@ def find_is_sd(bam_file, samplesize):
     slop = int(mean + 5 * sdev)
     print('Using slop equal to 5 standard deviations from insert size mean: {:.0f}'.format(slop))
     return slop
+
 
 def merge_two_dicts(x, y):
     z = x.copy()   # start with x's keys and values

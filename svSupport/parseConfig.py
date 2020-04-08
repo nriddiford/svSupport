@@ -112,7 +112,7 @@ def mergeAll(options, sample):
     su = []
     op = []
     reg = []
-
+    print("MergeAll")
     for file in os.listdir(options.out_dir):
         if file.endswith("supporting.s.bam"):
             su.append(os.path.join(options.out_dir, file))
