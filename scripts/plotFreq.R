@@ -6,22 +6,13 @@ library(plotly)
 library(forcats)
 # install.packages('~/iCloud/Desktop/script_test/svBreaks/', repos = NULL, type="source")
 
-excluded_samples <- c("A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7",
-                      "A785-A788R9", "B241R41-2", "D050R01", "D050R03", "D050R05", "D050R07-1",
-                      "D050R07-2", "D050R10", "D050R12", "D050R14", "D050R16", "D050R18", "D050R20",
-                      "D050R22", "D050R24", "A373R7", "A512R17", "A373R7", "A512R17", "D106R11", "D106R1",
-                      "D106R13", "D106R15", "D106R17", "D106R19", "D106R21", "D106R23", "D106R25", "D106R27",
-                      "D106R29", "D106R3", "D106R31", "D106R33", "D106R5", "D106R7", "D106R9")
 
-excluded_samples <- c("B241R41-2", "D050R07-2", "D050R10", "D050R12", "D050R14", "D050R16", "D050R18", "D050R20",
-                      "D050R22", "D050R24", "A373R7", "A512R17", "A373R7", "A512R17")
-
-excluded_samples <- c("B241R41-2",  "A373R7", "A512R17", "D050R01", "D050R03", "D050R05", "D050R07-1", "D050R07-2", "D050R10", "D050R12", "D050R14", "D050R16", "D050R18", "D050R20", "D050R22", "D050R24")
+excluded_samples <- c("B241R41-2",  "A373R7", "A512R17")
+excluded_samples <- c(excluded_samples, "D050R01", "D050R03", "D050R05", "D050R07-1", "D050R07-2", "D050R09", "D050R10", "D050R12", "D050R14", "D050R16", "D050R18", "D050R20", "D050R22", "D050R24")
 excluded_samples <- c(excluded_samples, "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9")
-excluding_females <- c(excluded_samples, "D106R11", "D106R1", "D106R13", "D106R15", "D106R17", "D106R19", "D106R21", "D106R3", "D106R5", "D106R7", "D106R9")
-
-
-
+excluded_samples <- c(excluded_samples, "D106R1", "D106R3", "D106R5", "D106R7", "D106R9", "D106R11", "D106R13", "D106R15", "D106R17", "D106R19", "D106R21", "D106R23", "D106R25", "D106R27", "D106R29", "D106R31", "D106R33"  )
+excluded_samples <- c(excluded_samples, "D197R09", "D197R11", "D197R13", "D197R15")
+excluded_samples <- c(excluded_samples, "D265R01", "D265R03", "D265R05", "D265R07", "D265R09", "D265R11", "D265R13")
 
 cleanTheme <- function(base_size = 12) {
   theme(
@@ -240,7 +231,6 @@ get_SVs <- function(..., all_samples, bed_file, drivers){
   cat("Reading SV data...\n")
   
   all_data <- read.delim(all_samples, header = T)
-  
   all_data$affected_genes <- as.character(all_data$affected_genes)
 
   gene_hits <- all_data %>%
@@ -248,7 +238,8 @@ get_SVs <- function(..., all_samples, bed_file, drivers){
       !status %in% c('F', 'aF')) %>%
     dplyr::rename(length = length.Kb.,
                   cn     = log2.cnv.) %>%
-    dplyr::mutate(type_decomposed = as.character(ifelse(str_detect(type, 'COMPLEX'), 'COMPLEX', as.character(type)))) %>%
+    dplyr::mutate(allele_frequency = as.double(as.character(allele_frequency)),
+                  type_decomposed = as.character(ifelse(str_detect(type, 'COMPLEX'), 'COMPLEX', as.character(type)))) %>%
     dplyr::group_by(sample, event) %>%
     dplyr::mutate(affected_genes = paste0(affected_genes, collapse = ", ")) %>% 
     # dplyr::mutate(gene_hit = ifelse(geneIn(drivers, affected_genes),'Notch', 'Other')) %>%
@@ -258,7 +249,7 @@ get_SVs <- function(..., all_samples, bed_file, drivers){
     dplyr::mutate(special_hit = ifelse(type %in% c("COMPLEX", "DEL"), as.character(geneIn(bed_file$gene, affected_genes)), "Other")) %>% 
     
     dplyr::mutate(cell_fraction = ifelse(chromosome1 %in% c("X", "Y"), allele_frequency,
-                                         ifelse(allele_frequency*2>1, 1,allele_frequency*2))) %>%
+                                         ifelse(allele_frequency*2>1, 1, allele_frequency*2))) %>%
     dplyr::mutate(class = 'SV') %>%
     dplyr::ungroup() %>%
     dplyr::select(sample, allele_frequency, cell_fraction, class, gene_hit, special_hit) %>%
@@ -429,21 +420,33 @@ plot_tumour_evolution <- function(..., all_samples = '~/Desktop/script_test/alle
   if(indels) indel_hits <- get_INDELs(all_samples_indels = all_samples_indels, bed_file=bed_file, drivers=drivers)
   Notch_indels <- highest_N(indel_hits)
   
-  if(tes) te_hits <- get_TEs(all_samples_tes = all_samples_tes, bed_file=bed_file, drivers=drivers)
-  Notch_tes <- highest_N(te_hits)
-  
-  df <- do.call("rbind", list(indel_hits, snv_hits, gene_hits, te_hits))
+  if(tes) {
+    te_hits <- get_TEs(all_samples_tes = all_samples_tes, bed_file=bed_file, drivers=drivers)
+    Notch_tes <- highest_N(te_hits)
+    df <- do.call("rbind", list(indel_hits, snv_hits, gene_hits, te_hits))
+  } else {
+    df <- do.call("rbind", list(indel_hits, snv_hits, gene_hits))
+    
+  }
   
   # Get max Notch accross all mut types
   Notch_hits <- merge(Notch_svs,  Notch_snvs,   by = "sample", all = TRUE)
   Notch_hits <- merge(Notch_hits, Notch_indels, by = "sample", all = TRUE)
   colnames(Notch_hits) <- c('sample', 'sv', 'snv', 'indel')
-  Notch_hits <- merge(Notch_hits, Notch_tes, by = "sample", all = TRUE)
-  colnames(Notch_hits) <- c('sample', 'sv', 'snv', 'indel', 'te')
+  
+  if(tes){
+    Notch_hits <- merge(Notch_hits, Notch_tes, by = "sample", all = TRUE)
+    colnames(Notch_hits) <- c('sample', 'sv', 'snv', 'indel', 'te')
+    Notch_hits <- Notch_hits %>% 
+      dplyr::mutate(highest_n=pmax(sv, snv, indel, te))
+  } else{
+    Notch_hits <- Notch_hits %>% 
+      dplyr::mutate(highest_n=pmax(sv, snv, indel))
+  }
   
   Notch_hits[is.na(Notch_hits)] <- 0
-  Notch_hits <- Notch_hits %>% 
-    dplyr::mutate(highest_n=pmax(sv, snv, indel, te))
+  # Notch_hits <- Notch_hits %>% 
+  #   dplyr::mutate(highest_n=pmax(sv, snv, indel, te))
   
   # df <- make_short_name(x=df)
   # 
