@@ -14,7 +14,7 @@ class AlleleFrequency(object):
         p = self.tumour_purity
         total_support = self.total_support
         total_oppose = self.total_oppose
-        if total_support == 0: return 0
+        if total_support == 0: return 0, 0
 
         total_reads = total_support + total_oppose
 
@@ -38,7 +38,7 @@ class AlleleFrequency(object):
         adj_allele_frequency = round(adj_allele_frequency, 2)
         print("* Allele frequency adjusted from %s to %s" % (allele_frequency, adj_allele_frequency))
 
-        return adj_allele_frequency
+        return allele_frequency, adj_allele_frequency
 
 
     def read_depth_af(self):
@@ -81,4 +81,4 @@ class AlleleFrequency(object):
         print("* Log2, purity-adjusted read depth ratio = %s " % log2_rd_ratio )
         print("* Allele frequency adjusted from %s to %s" % (af, adjaf))
 
-        return adjaf, r2, log2_rd_ratio
+        return af, adjaf, r2, log2_rd_ratio

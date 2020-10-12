@@ -23,11 +23,12 @@ function getBase(){
 }
 
 bamdir=/Volumes/perso/Analysis/Bwa
-#variants=/Users/Nick_curie/Desktop/parserTest/filtered4/summary/merged
-variants=/Users/Nick_curie/Desktop/parserTest/filtered_delta_16919/summary/merged
+#variants=/Users/Nick_curie/Desktop/parserTest/filtered_delta_22120/summary/merged
+variants=/Users/Nick_curie/Desktop/parserTest/filtered_231018/summary/merged
 out_dir=/Users/Nick_curie/Desktop/script_test/svSupport/out
 purity=/Users/Nick_curie/Desktop/script_test/svSupport/data/tumour_purity.txt
-script_bin=/Users/Nick_curie/Desktop/script_test/svSupport
+script_bin=$(pwd)
+echo $script_bin
 makeConfig=0
 svSupport=0
 

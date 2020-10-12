@@ -61,12 +61,12 @@ def worker(options):
     if normal:
         n_reads, t_reads, adj_ratio, notes = get_depth(bam_in, normal, chrom1, bp1, bp2, chroms, notes, options, chrom_dict)
         af = AlleleFrequency(n_reads, t_reads, purity, chrom1, options.sex)
-        allele_frequency, adj_ratio, rd_ratio = af.read_depth_af()
+        old_af, allele_frequency, adj_ratio, rd_ratio = af.read_depth_af()
         cnv_type = classify_cnv(chrom1, adj_ratio, options.sex)
 
         if notes: print(notes)
 
-        return bp1, bp2, allele_frequency, cnv_type, rd_ratio, notes, None, None
+        return bp1, bp2, old_af, allele_frequency, cnv_type, rd_ratio, notes, None, None
 
     bp_regions, options.slop = get_regions(bam_in, chrom1, bp1, chrom2, bp2, out_dir, options, chrom_dict)
 
@@ -188,7 +188,7 @@ def worker(options):
         notes.append(n)
 
     af = AlleleFrequency(total_oppose, total_support, purity, chrom1, options.sex)
-    allele_frequency = af.read_support_af()
+    old_af, allele_frequency = af.read_support_af()
 
     svID = '_'.join(map(str, [chrom1, bp1, chrom2, bp2]))
     suout = os.path.join(out_dir, svID + '_supporting_dirty.bam')
@@ -218,7 +218,7 @@ def worker(options):
 
     if notes: print(notes)
 
-    return bp1, bp2, allele_frequency, sv_type, configuration, notes, split_support, disc_support
+    return bp1, bp2, old_af, allele_frequency, sv_type, configuration, notes, split_support, disc_support
 
 
 def add_note(notes, s):

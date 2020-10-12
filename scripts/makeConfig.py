@@ -18,6 +18,9 @@ def makeConfig(options):
 
         if group in ['D050k', 'D050']:
             sex = 'XX'
+        elif group == 'D265' and int(t_id) in [01, 03, 05, 11]:
+            print("Setting as female for sample %s" % t_id)
+            sex = 'XX'
         elif group == 'D106' and int(t_id) < 23:
             sex = 'XX'
         elif group == 'D197' and str(t_id) in ['09', '11', '13', '15']:
@@ -31,6 +34,14 @@ def makeConfig(options):
             df.loc[i, 'bam'] = sample_bam
             df.loc[i, 'tumour_purity'] = purity
             df.loc[i, 'sex'] = sex
+
+
+        # TODO add option for Notch filtering
+        # df = df[(df['chromosome1'] == '2L') | (df['chromosome2'] == '2L')]
+        # df = df[(
+        #     (df['chromosome1'] == 'X') & (df['bp1'] > 2500000) & (df['bp1'] < 3500000) |
+        #     (df['chromosome2'] == 'X') & (df['bp2'] > 2500000) & (df['bp2'] < 3500000)
+        # )]
 
         df.to_csv(options.outfile, sep="\t", index=False)
 
@@ -107,6 +118,11 @@ def getbam(bam_dir, bamgroup, group, t_id):
         normal_bam = group + "R" + '0' + str(n_id) + '.tagged.filt.SC.RG.bam'
         sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
     elif group == 'D197' and str(t_id) in ['01', '03', '05', '07']:
+         n_id = int(str(t_id)[-1]) + 1
+         normal_bam = group + "R" + '0' + str(n_id) + '.tagged.filt.SC.RG.bam'
+         sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
+
+    elif group == 'D265' and str(t_id) in ['01', '03', '05', '07']:
          n_id = int(str(t_id)[-1]) + 1
          normal_bam = group + "R" + '0' + str(n_id) + '.tagged.filt.SC.RG.bam'
          sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'

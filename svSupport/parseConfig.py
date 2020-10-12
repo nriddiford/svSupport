@@ -32,7 +32,7 @@ def parse_config(options):
         if genotype != 'somatic_tumour': continue
 
         if df.loc[i, 'chromosome1'] != df.loc[i, 'chromosome2']:
-            options.region = df.loc[i, 'chromosome1'] + ":" + str(df.loc[i, 'bp1']) + "-" + df.loc[i, 'chromosome2'] + ":" + str(df.loc[i, 'bp2'])
+            options.region = str(df.loc[i, 'chromosome1']) + ":" + str(df.loc[i, 'bp1']) + "-" + str(df.loc[i, 'chromosome2']) + ":" + str(df.loc[i, 'bp2'])
         else:
             options.region = df.loc[i, 'position']
 
@@ -40,7 +40,7 @@ def parse_config(options):
         if options.guess and df.loc[i, 'status'] != 'F':
             options.find_bps = True
 
-        bp1, bp2, af, sv_type, configuration, notes, split_support, disc_support = worker(options)
+        bp1, bp2, old_af, af, sv_type, configuration, notes, split_support, disc_support = worker(options)
 
         if options.normal_bam:
             df.loc[i, 'configuration'] = sv_type
@@ -50,7 +50,10 @@ def parse_config(options):
 
         notes = mark_low_FC(notes, options.sex, df.loc[i, 'log2(cnv)'], sv_type, df.loc[i, 'chromosome1'], split_support)
 
+        oaf = '='.join(map(str, ["unadj_af", old_af]))
         nlist = filter(None, notes)
+        nlist.insert(0, oaf)
+        print(nlist)
         nstring = '; '.join(nlist)
         if df.loc[i, 'notes']:
             df.loc[i, 'notes'] = nstring + "; " + df.loc[i, 'notes']
@@ -62,14 +65,18 @@ def parse_config(options):
         if split_support is not None: df.loc[i, 'split_reads'] = split_support
         if disc_support is not None: df.loc[i, 'disc_reads'] = disc_support
 
+        # TODO - this adds a new col for unadjusted af 2.7.20. Need to fix downstream. Might be better to just add to notes...
+
+        # df.loc[i, 'original_allele_frequency'] = old_af
         df.loc[i, 'allele_frequency'] = af
         df.loc[i, 'bp1'] = bp1
         df.loc[i, 'bp2'] = bp2
 
+
         if df.loc[i, 'chromosome1'] != df.loc[i, 'chromosome2']:
-            df.loc[i, 'position'] = df.loc[i, 'chromosome1'] + ":" + str(bp1) + " " + df.loc[i, 'chromosome2'] + ":" + str(bp2)
+            df.loc[i, 'position'] = str(df.loc[i, 'chromosome1']) + ":" + str(bp1) + " " + str(df.loc[i, 'chromosome2']) + ":" + str(bp2)
         else:
-            df.loc[i, 'position'] = df.loc[i, 'chromosome1'] + ":" + str(bp1) + "-" + str(bp2)
+            df.loc[i, 'position'] = str(df.loc[i, 'chromosome1']) + ":" + str(bp1) + "-" + str(bp2)
 
         if af == 0:
             df.loc[i, 'status'] = 'F'

@@ -6,7 +6,6 @@ library(plotly)
 library(forcats)
 # install.packages('~/iCloud/Desktop/script_test/svBreaks/', repos = NULL, type="source")
 
-
 excluded_samples <- c("B241R41-2",  "A373R7", "A512R17")
 excluded_samples <- c(excluded_samples, "D050R01", "D050R03", "D050R05", "D050R07-1", "D050R07-2", "D050R09", "D050R10", "D050R12", "D050R14", "D050R16", "D050R18", "D050R20", "D050R22", "D050R24")
 excluded_samples <- c(excluded_samples, "A785-A788R1", "A785-A788R11", "A785-A788R3", "A785-A788R5", "A785-A788R7", "A785-A788R9")
@@ -16,17 +15,23 @@ excluded_samples <- c(excluded_samples, "D265R01", "D265R03", "D265R05", "D265R0
 
 cleanTheme <- function(base_size = 12) {
   theme(
-    # plot.title = element_text(hjust = 0.5, size = 20),
+    plot.title = element_text(hjust = 0.5, size = 15),
     panel.background = element_blank(),
     plot.background = element_rect(fill = "transparent", colour = NA),
     panel.grid.minor = element_blank(),
     panel.grid.major = element_blank(),
+    panel.spacing = unit(2, "lines"),
     axis.line.x = element_line(color = "black", size = 0.5),
     axis.line.y = element_line(color = "black", size = 0.5),
-    # axis.text = element_text(size = 20),
-    axis.title = element_text(size = 30)
+    axis.text = element_text(size=rel(1.1)),
+    axis.title = element_text(size=rel(1.4)),
+    strip.text = element_text(size = 12),
+    strip.background = element_rect(
+      color="black", fill="#F2F2F2", size=1, linetype="solid"
+    )
   )
 }
+
 
 slideTheme <- function(base_size = 25) {
   theme(
@@ -273,12 +278,29 @@ get_SVs <- function(..., all_samples, bed_file, drivers){
   return(as.data.frame(gene_hits))
 }
 
+addPurity <- function(df, purity_file='/Users/Nick_curie/Desktop/script_test/svSupport/data/tumour_purity.txt'){
+  purity <- read.delim(purity_file, header = F)
+  colnames(purity) <- c('sample', 'purity')
+  
+  df <- plyr::join(df, purity, by='sample')
+  df$corrected_af <- df$allele_frequency + (1-df$purity) * df$allele_frequency
 
-get_SNVs <- function(..., all_samples_snvs, bed_file, drivers){
+  df <- df %>% 
+    dplyr::mutate(corrected_af = ifelse(corrected_af>1, 1, corrected_af)) %>% 
+    dplyr::rename(af_old = allele_frequency,
+                  allele_frequency = corrected_af)
+  
+  return(df)
+}
+
+
+get_SNVs <- function(..., all_samples_snvs, bed_file, drivers, purity_adj){
   cat("Reading SNV data...\n")
   
   snv_data <- read.delim(all_samples_snvs, header = T)
   colnames(snv_data) <- c('sample', 'chromosome',	'pos',	'ref',	'alt',	'trinuc',	'trans',	'decomp_trinuc',	'grouped_trans',	'allele_frequency',	'caller',	'variant_type',	'status',	'snpEff_anno',	'feature',	'gene',	'id')
+  
+  if(purity_adj) snv_data <- addPurity(df = snv_data)
   
   snv_hits <- snv_data %>% 
     dplyr::filter(...) %>% 
@@ -294,11 +316,13 @@ get_SNVs <- function(..., all_samples_snvs, bed_file, drivers){
 }
 
 
-get_INDELs <- function(..., all_samples_indels, bed_file, drivers){
+get_INDELs <- function(..., all_samples_indels, bed_file, drivers, purity_adj){
   cat("Reading INDEL data...\n")
   
   indel_data <- read.delim(all_samples_indels, header = T)
   # colnames(snv_data) <- c('sample', 'chromosome',	'pos',	'ref',	'alt',	'trinuc',	'trans',	'decomp_trinuc',	'grouped_trans',	'allele_frequency',	'caller',	'variant_type',	'status',	'snpEff_anno',	'feature',	'gene',	'id')
+  
+  if(purity_adj) indel_data <- addPurity(df = indel_data)
   
   indel_hits <- indel_data %>% 
     dplyr::filter(...) %>% 
@@ -354,16 +378,21 @@ highest_N <- function(gene_hits){
 }
 
 
-convert_names <- function(x, short_to_long=F){
-  name_conversion <- read.delim('/Users/Nick_curie/Desktop/samples_names_conversion.txt', header=F)
-  colnames(name_conversion) <- c("sample", "name_short", "sex", "assay")
+
+
+convert_names <- function(..., df, attach_info){
   
-  if(short_to_long) {
-    x$sample <- name_conversion$sample[ match(x$shortName, name_conversion$name_short) ]
-  } else {
-    x$shortName <- name_conversion$name_short[ match(x$sample, name_conversion$sample)]
-  }
-  return(x)
+  all_sample_names <- read.delim(attach_info, header = F)
+  colnames(all_sample_names) <- c("sample", "sample_short", "sample_paper", "sex", "assay")
+  
+  
+  df <- plyr::join(df, all_sample_names, "sample", type = 'left') %>% 
+    dplyr::filter(...) %>% 
+    dplyr::rename(sample_old = sample,
+                  sample = sample_paper) %>% 
+    dplyr::select(sample, everything())
+
+  return(df)
 }
   
 
@@ -404,20 +433,19 @@ plot_tumour_evolution <- function(..., all_samples = '~/Desktop/script_test/alle
                               all_samples_snvs = '~/Desktop/script_test/mutationProfiles/data/annotated_snvs.txt',
                               all_samples_indels = '~/Desktop/script_test/mutationProfiles/data/annotated_indels.txt',
                               all_samples_tes = '/Users/Nick_curie/Desktop/Analysis_pipelines/TEs/all_bps.txt',
+                              attach_info = '/Users/Nick_curie/Desktop/script_test/mutationProfiles/data/samples_names_conversion.txt',
                               annotate_with = '~/Desktop/gene2bed/bed/dna_damage_repair.bed', drivers=c('N', 'kuz', "Dl"),
-                              show_sample = TRUE, snvs=TRUE, indels=TRUE, tes=TRUE, exclude=NULL){
-  
-  if(missing(exclude)) exclude <- c()
+                              purity_adj=TRUE, show_sample = TRUE, snvs=TRUE, indels=TRUE, tes=TRUE, plot=TRUE){
   
   bed_file <- readBed(bed_in = annotate_with)
   colnames(bed_file) <- c("chrom", "start", "end", "gene", "id")
   gene_hits <- get_SVs(all_samples=all_samples, bed_file=bed_file, drivers=drivers)
   Notch_svs <- highest_N(gene_hits)
   
-  if(snvs) snv_hits <- get_SNVs( all_samples_snvs = all_samples_snvs, bed_file=bed_file, drivers=drivers )
+  if(snvs) snv_hits <- get_SNVs( all_samples_snvs = all_samples_snvs, bed_file=bed_file, drivers=drivers, purity_adj=purity_adj)
   Notch_snvs <- highest_N(snv_hits)
   
-  if(indels) indel_hits <- get_INDELs(all_samples_indels = all_samples_indels, bed_file=bed_file, drivers=drivers)
+  if(indels) indel_hits <- get_INDELs(all_samples_indels = all_samples_indels, bed_file=bed_file, drivers=drivers, purity_adj=purity_adj)
   Notch_indels <- highest_N(indel_hits)
   
   if(tes) {
@@ -451,18 +479,24 @@ plot_tumour_evolution <- function(..., all_samples = '~/Desktop/script_test/alle
   # df <- make_short_name(x=df)
   # 
   # Notch_svs <- make_short_name(Notch_hits)
+  df <- convert_names(..., df=df, attach_info=attach_info)
+  Notch_hits <- convert_names(..., df=Notch_hits, attach_info=attach_info)
   
   df$sample <- factor(df$sample, levels(fct_reorder(Notch_hits$sample, -Notch_hits$highest_n)))
   
   df <- df %>% 
     dplyr::filter(..., !is.na(sample)) %>% 
+    dplyr::mutate(time = 1-cell_fraction) %>% 
     dplyr::mutate(class = factor(as.character(class))) %>% 
     droplevels()
   
   Notch_hits <- Notch_hits %>% 
     dplyr::filter(...) %>% 
-    dplyr::mutate(sample=fct_reorder(sample, -highest_n)) %>%
+    dplyr::mutate(time = 1-highest_n) %>% 
+    dplyr::mutate(sample=fct_reorder(sample, time)) %>%
     droplevels()
+  
+  if(!plot) return(list(Notch_hits, df))
   
   # df <- plyr::join(df, Notch_svs, by='sample')
   
@@ -472,28 +506,40 @@ plot_tumour_evolution <- function(..., all_samples = '~/Desktop/script_test/alle
   special_hits$sample <- factor(special_hits$sample, levels(fct_reorder(Notch_hits$sample, -Notch_hits$highest_n)))
   
   special_hits %>% 
-    dplyr::select(sample, class, special_hit, cell_fraction) %>% 
+    dplyr::mutate(time = 1-cell_fraction) %>% 
+    dplyr::select(sample, class, special_hit, time) %>% 
     print()
-    
-  p <- ggplot(Notch_hits)
-  p <- p + geom_violin(data=df, aes(sample, -cell_fraction, fill = sample, colour=sample), alpha = 0.3, show.legend = FALSE,  adjust=0.3, scale='width')
-  p <- p + geom_point(data=special_hits, aes(sample, -cell_fraction), size=2, shape=4, show.legend = FALSE)
-  # p <- p + geom_violin(data=df[df$class=='INDEL',], aes(sample, -cell_fraction, colour = sample, fill = sample), position='dodge', size=0.1, alpha = 0.4, show.legend = FALSE)
-  p <- p + geom_errorbar(data=Notch_hits, aes(fct_reorder(sample, -highest_n), ymin=-highest_n, ymax=-highest_n), alpha=0.6, size=0.7, show.legend = FALSE)
   
+  # Custom reorder
+  df$class = factor(df$class, levels=c("SV","SNV", "INDEL"), labels=c("SV","SNV", "INDEL")) 
+  special_hits$class = factor(special_hits$class, levels=c("SV","SNV", "INDEL"), labels=c("SV","SNV", "INDEL")) 
+   
+  red <- "#FC4E07"
+  blue <- "#00AFBB"
+  yellow <- "#F5D658"
+  grey <- "grey"
+  
+  cols <- c(blue, yellow, red)
+  
+ 
+  
+  p <- ggplot(Notch_hits)
+  p <- p + geom_violin(data=df, aes(sample, time, fill = class, colour=class), alpha = 0.3, show.legend = FALSE,  adjust=0.3, scale='width')
+  p <- p + geom_jitter(data=df, aes(sample, time, fill = class, colour=class), width=0.2, height = 0.01, size=.5, alpha = 0.3, show.legend = FALSE)
+  
+  p <- p + geom_point(data=special_hits, aes(sample, time), size=2, shape=4, show.legend = FALSE)
+  p <- p + geom_errorbar(data=Notch_hits, aes(fct_reorder(sample, time), ymin=time, ymax=time), alpha=0.6, size=0.7, color='black', show.legend = FALSE)
   p <- p + coord_flip()
-
   p <- p + labs(x = NULL)
-  p <- p +  scale_y_continuous('Fraction of cells with mutation', labels=seq(1,0,by=-.25), expand = c(0, 0.01))
-
-  p <- p + slideTheme() +
+  p <- p + scale_fill_manual(values=cols)
+  p <- p + scale_colour_manual(values=cols)
+  p <- p +  scale_y_continuous('Pseudotime (1 - cell fraction)', labels=seq(0,1,by=.25), expand = c(0, 0.01))
+  p <- p + cleanTheme() +
     theme(
       panel.grid.major.x = element_line(color = "grey80", size = 0.5, linetype = "dotted"),
-      # axis.text.x = element_text(angle = 90,vjust = 0.5, hjust=1),
       axis.title.x = element_text(size = 15),
-      axis.text = element_text(size = 15),
-      panel.spacing = unit(2, "lines")
-      )
+      axis.text = element_text(size = 12),
+      panel.spacing = unit(2, "lines"))
  
   if(!show_sample) p <- p + theme(axis.text.y = element_blank(), axis.ticks.y=element_blank())
   p <- p + facet_wrap(~class, nrow=1)
