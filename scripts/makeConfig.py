@@ -127,6 +127,10 @@ def getbam(bam_dir, bamgroup, group, t_id):
          normal_bam = group + "R" + '0' + str(n_id) + '.tagged.filt.SC.RG.bam'
          sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
 
+    elif group == 'visor':
+        n_id = int(str(t_id)[-1]) + 1
+        normal_bam = group + "R" + '0' + str(n_id) + '.tagged.filt.SC.RG.bam'
+        sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
     else:
         n_id = int(t_id) + 1
         normal_bam = group + "R" + str(n_id) + '.tagged.filt.SC.RG.bam'
@@ -175,11 +179,15 @@ def get_args():
                       help = "File to annotated variants file to")
 
     parser.set_defaults(bam_dir='/Volumes/perso/Analysis/Bwa',
-                        outfile='/Users/Nick_curie/Desktop/script_test/svSupport/data/config.txt',
-                        purity_file='/Users/Nick_curie/Desktop/script_test/svSupport/data/tumour_purity.txt'
+                        outfile='/'.join([sys.path[1], '/data/config.txt']),
+                        purity_file='/'.join([sys.path[1], '/data/tumour_purity.txt'])
                         )
 
+
     options, args = parser.parse_args()
+
+    print(options.purity_file)
+
 
     if (options.variants is None):
         parser.print_help()
