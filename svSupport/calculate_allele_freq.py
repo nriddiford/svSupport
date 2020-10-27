@@ -53,10 +53,16 @@ class AlleleFrequency(object):
         op = abs(n - su)
         # print("Opposing reads = %s (%s-%s)") % (op, n, su)
 
+
+
         r1 = round((t/n), 2)
         af = su/(op+su)
 
-        adjop = ((1-p) * op) + 0.01
+        adjop = op
+
+        if p < 1:
+            adjop = ((1-p) * op) + 0.01
+
         # print("Adjusting op reads for tp: %s = %s (%s*%s)") % (p, adjop, op, p)
         adjaf = su/(su+adjop)
 
