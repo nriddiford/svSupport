@@ -127,10 +127,6 @@ def getbam(bam_dir, bamgroup, group, t_id):
          normal_bam = group + "R" + '0' + str(n_id) + '.tagged.filt.SC.RG.bam'
          sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
 
-    elif group == 'visor':
-        n_id = int(str(t_id)[-1]) + 1
-        normal_bam = group + "R" + '0' + str(n_id) + '.tagged.filt.SC.RG.bam'
-        sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
     else:
         n_id = int(t_id) + 1
         normal_bam = group + "R" + str(n_id) + '.tagged.filt.SC.RG.bam'
