@@ -53,8 +53,6 @@ class AlleleFrequency(object):
         op = abs(n - su)
         # print("Opposing reads = %s (%s-%s)") % (op, n, su)
 
-
-
         r1 = round((t/n), 2)
         af = su/(op+su)
 
