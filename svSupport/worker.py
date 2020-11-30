@@ -226,6 +226,7 @@ def add_note(notes, s):
         notes.append(s)
     return notes
 
+
 def assessIntegration(alien, te, bp_number):
     alien[None] = 0
     ak = max(alien, key=alien.get)
