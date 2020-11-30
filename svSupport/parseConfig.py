@@ -24,6 +24,7 @@ def parse_config(options):
         options.normal_bam = df.loc[i, 'normal_bam']
         options.guess = df.loc[i, 'guess']
         options.sex = df.loc[i, 'sex']
+        options.sv_type = df.loc[i, 'type']
 
         if df.loc[i, 'notes'] == '-': df.loc[i, 'notes'] = ''
         if df.loc[i, 'status'] == '-': df.loc[i, 'status'] = ''
@@ -51,8 +52,10 @@ def parse_config(options):
         notes = mark_low_FC(notes, options.sex, df.loc[i, 'log2(cnv)'], sv_type, df.loc[i, 'chromosome1'], split_support)
 
         oaf = '='.join(map(str, ["unadj_af", old_af]))
+        osv = '='.join(map(str, ["svtype", options.sv_type]))
         nlist = filter(None, notes)
         nlist.insert(0, oaf)
+        nlist.insert(0, osv)
         print(nlist)
         nstring = '; '.join(nlist)
         if df.loc[i, 'notes']:
