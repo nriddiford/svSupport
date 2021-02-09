@@ -16,7 +16,7 @@ def makeConfig(options):
 
         if len(df.index) == 0: sys.exit("No variants in file. Exiting")
 
-        if group in ['D050k', 'D050']:
+        if group in ['D050k', 'D050', 'A4']:
             sex = 'XX'
         elif group == 'D265' and int(t_id) in [01, 03, 05, 11]:
             print("Setting as female for sample %s" % t_id)
@@ -182,8 +182,8 @@ def get_args():
                       help = "File to annotated variants file to")
 
     parser.set_defaults(bam_dir='/Volumes/perso/Analysis/Bwa',
-                        outfile='/'.join([sys.path[1], '/data/config.txt']),
-                        purity_file='/'.join([sys.path[1], '/data/tumour_purity.txt'])
+                        outfile='/data/config.txt',
+                        purity_file='/data/tumour_purity.txt'
                         )
 
 
