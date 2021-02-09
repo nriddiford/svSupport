@@ -1,24 +1,26 @@
-import os, sys, re
-sys.dont_write_bytecode = True
-import pandas as pd
 from optparse import OptionParser
 import ntpath
+import os, sys, re
+import pandas as pd
+
+sys.dont_write_bytecode = True
 
 
-def makeConfig(options):
+def make_config(options):
     options.outfile = options.sample + '_config.txt'
 
     with open(options.variants, 'r') as variants:
         purity = get_purity(options)
-        sample, group, bamgroup, t_id = getGroup(options.sample)
+        sample, group, bamgroup, t_id = get_group(options.sample)
         sample_bam, normal_bam = getbam(options.bam_dir, bamgroup, group, t_id)
         df = pd.read_csv(variants, delimiter="\t", index_col=False)
 
-        if len(df.index) == 0: sys.exit("No variants in file. Exiting")
+        if len(df.index) == 0:
+            sys.exit("No variants in file. Exiting")
 
         if group in ['D050k', 'D050', 'A4']:
             sex = 'XX'
-        elif group == 'D265' and int(t_id) in [01, 03, 05, 11]:
+        elif group == 'D265' and int(t_id) in ['01', '03', '05', '11']:
             print("Setting as female for sample %s" % t_id)
             sex = 'XX'
         elif group == 'D106' and int(t_id) < 23:
@@ -35,14 +37,6 @@ def makeConfig(options):
             df.loc[i, 'tumour_purity'] = purity
             df.loc[i, 'sex'] = sex
 
-
-        # TODO add option for Notch filtering
-        # df = df[(df['chromosome1'] == '2L') | (df['chromosome2'] == '2L')]
-        # df = df[(
-        #     (df['chromosome1'] == 'X') & (df['bp1'] > 2500000) & (df['bp1'] < 3500000) |
-        #     (df['chromosome2'] == 'X') & (df['bp2'] > 2500000) & (df['bp2'] < 3500000)
-        # )]
-
         df.to_csv(options.outfile, sep="\t", index=False)
 
 
@@ -57,7 +51,7 @@ def get_purity(options):
         return 1
 
 
-def getGroup(sample):
+def get_group(sample):
     n = re.search(r'R(.*)', sample)
     if n:
         m = re.search(r'(.*)R', sample)
@@ -86,7 +80,7 @@ def guess(sr, nbam):
     if sr == '-':
         return '', nbam
     else:
-        return 'T',''
+        return 'T', ''
 
 
 def getbam(bam_dir, bamgroup, group, t_id):
@@ -103,14 +97,14 @@ def getbam(bam_dir, bamgroup, group, t_id):
     elif t_id in ['41-1', '41-2']:
         t_no, sid = t_id.split('-')
         n_no = int(t_no) + 1
-        n_id = '-'.join(map(str,[n_no, sid]))
+        n_id = '-'.join(map(str, [n_no, sid]))
         normal_bam = group + "R" + str(n_id) + '.tagged.filt.SC.RG.bam'
         sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
 
     elif t_id in ['07-1', '07-2']:
         t_no, sid = t_id.split('-')
         n_no = int(t_no) + 1
-        n_id = '-'.join(map(str,[n_no, sid]))
+        n_id = '-'.join(map(str, [n_no, sid]))
         normal_bam = group + "R" + '0' + str(n_id) + '.tagged.filt.SC.RG.bam'
         sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
 
@@ -120,14 +114,14 @@ def getbam(bam_dir, bamgroup, group, t_id):
         sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
 
     elif group == 'D197' and str(t_id) in ['01', '03', '05', '07']:
-         n_id = int(str(t_id)[-1]) + 1
-         normal_bam = group + "R" + '0' + str(n_id) + '.tagged.filt.SC.RG.bam'
-         sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
+        n_id = int(str(t_id)[-1]) + 1
+        normal_bam = group + "R" + '0' + str(n_id) + '.tagged.filt.SC.RG.bam'
+        sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
 
     elif group == 'D265' and str(t_id) in ['01', '03', '05', '07']:
-         n_id = int(str(t_id)[-1]) + 1
-         normal_bam = group + "R" + '0' + str(n_id) + '.tagged.filt.SC.RG.bam'
-         sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
+        n_id = int(str(t_id)[-1]) + 1
+        normal_bam = group + "R" + '0' + str(n_id) + '.tagged.filt.SC.RG.bam'
+        sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
 
     elif group == 'D477' and str(t_id) in ['01', '03', '05', '07']:
         n_id = int(str(t_id)[-1]) + 1
@@ -149,50 +143,23 @@ def getbam(bam_dir, bamgroup, group, t_id):
 def get_args():
     parser = OptionParser()
 
-    parser.add_option("-b",
-                      "--bam_dir",
-                      dest = "bam_dir",
-                      action = "store",
-                      help = "Directory containing per-sample bam directories")
+    parser.add_option("-b", "--bam_dir", dest="bam_dir", action="store", help="Directory containing per-sample bam directories")
 
-    parser.add_option("-v",
-                      "--variants",
-                      dest = "variants",
-                      action = "store",
-                      help = "Variants file (as produced by svParser)",
-                      metavar = "FILE")
+    parser.add_option("-v", "--variants", dest="variants", action="store", help="Variants file (as produced by svParser)", metavar="FILE")
 
-    parser.add_option("-p",
-                      "--purity_file",
-                      dest = "purity_file",
-                      action = "store",
-                      help = "File containing 'sample [tab] tumour' purity estimates",
-                      metavar="FILE")
+    parser.add_option("-p", "--purity_file", dest="purity_file", action="store", help="File containing 'sample [tab] tumour' purity estimates", metavar="FILE")
 
-    parser.add_option("-s",
-                      "--sample",
-                      dest="sample",
-                      action="store",
-                      help="Sample name")
+    parser.add_option("-s", "--sample", dest="sample", action="store", help="Sample name")
 
-    parser.add_option("-o",
-                      "--outfile",
-                      dest = "outfile",
-                      action = "store",
-                      help = "File to annotated variants file to")
+    parser.add_option("-o", "--outfile", dest="outfile", action="store", help="File to annotated variants file to")
 
-    parser.set_defaults(bam_dir='/Volumes/perso/Analysis/Bwa',
-                        outfile='/data/config.txt',
-                        purity_file='/data/tumour_purity.txt'
-                        )
-
+    parser.set_defaults(bam_dir='/Volumes/perso/Analysis/Bwa', outfile='/data/config.txt', purity_file='/data/tumour_purity.txt')
 
     options, args = parser.parse_args()
 
     print(options.purity_file)
 
-
-    if (options.variants is None):
+    if options.variants is None:
         parser.print_help()
         print
         sys.exit()
@@ -212,7 +179,7 @@ def main():
     if not os.path.exists(dir):
         os.makedirs(dir)
 
-    makeConfig(options)
+    make_config(options)
 
 
 if __name__ == "__main__":
