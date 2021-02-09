@@ -113,10 +113,12 @@ def getbam(bam_dir, bamgroup, group, t_id):
         n_id = '-'.join(map(str,[n_no, sid]))
         normal_bam = group + "R" + '0' + str(n_id) + '.tagged.filt.SC.RG.bam'
         sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
+
     elif group == 'D050':
         n_id = int(t_id) + 1
         normal_bam = group + "R" + '0' + str(n_id) + '.tagged.filt.SC.RG.bam'
         sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
+
     elif group == 'D197' and str(t_id) in ['01', '03', '05', '07']:
          n_id = int(str(t_id)[-1]) + 1
          normal_bam = group + "R" + '0' + str(n_id) + '.tagged.filt.SC.RG.bam'
@@ -126,6 +128,11 @@ def getbam(bam_dir, bamgroup, group, t_id):
          n_id = int(str(t_id)[-1]) + 1
          normal_bam = group + "R" + '0' + str(n_id) + '.tagged.filt.SC.RG.bam'
          sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
+
+    elif group == 'D477' and str(t_id) in ['01', '03', '05', '07']:
+        n_id = int(str(t_id)[-1]) + 1
+        normal_bam = group + "R" + '0' + str(n_id) + '.tagged.filt.SC.RG.bam'
+        sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
 
     else:
         n_id = int(t_id) + 1
