@@ -28,13 +28,13 @@ def cleanup(out_dir):
     for f in os.listdir(out_dir):
         extension = os.path.splitext(f)[1][1:]
         if extension in ['bam', 'bai']:
+            abs_file = os.path.join(out_dir, f)
             try:
-                abs_file = os.path.join(out_dir, f)
                 os.remove(abs_file)
             except OSError:
                 print("Can't remove %s" % abs_file)
                 pass
-    return(out_dir)
+    return out_dir
 
 
 def print_options(bam_in, ratio, chrom, bp1, bp2, find_bps, debug, test, out_dir):
@@ -43,9 +43,9 @@ def print_options(bam_in, ratio, chrom, bp1, bp2, find_bps, debug, test, out_dir
     print("Running with options:")
     print("--------")
     for index, (value1, value2) in enumerate(zip(options, args)):
-         print("o %s: %s") % (value1, value2)
+        print("o %s: %s" % (value1, value2))
     print("--------")
-    print("python svSupport.py -i %s -l %s:%s-%s -f %s -t %s -d %d -o %s") % (bam_in, chrom, bp1, bp2, find_bps, test, debug, out_dir)
+    print("python svSupport.py -i %s -l %s:%s-%s -f %s -t %s -d %d -o %s" % (bam_in, chrom, bp1, bp2, find_bps, test, debug, out_dir))
     print("--------")
 
 

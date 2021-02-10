@@ -237,7 +237,8 @@ def supporting_remove(read, su, options, reason):
     if read.query_name in su:
         su = set(su)
         su.remove(read.query_name)
-        if options.debug: print("[!] Removing read: %s : %s" % (read.query_name, reason))
+        if options.debug:
+            print("[!] Removing read: %s : %s" % (read.query_name, reason))
 
     return list(su)
 
@@ -246,6 +247,7 @@ def supporting_add(read, su, options, reason):
     su = list(su)
     if read.query_name not in su:
         su.append(read.query_name)
-        if options.debug: print("[o] Adding new supporting read: %s : %s" % (read.query_name, reason))
+        if options.debug:
+            print("[o] Adding new supporting read: %s : %s" % (read.query_name, reason))
 
     return su

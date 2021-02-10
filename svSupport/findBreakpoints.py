@@ -14,7 +14,7 @@ def find_breakpoints(regions, chrom, chrom2, bp, bp_number, options, cn):
     else:
         window_size = 10
 
-    print("Looking for reads +/- %s bps surrounding %s") % (window_size, bp_number)
+    print("Looking for reads +/- %s bps surrounding %s" % (window_size, bp_number))
 
     for i in range(bp - window_size, bp + window_size):
         split_reads = 0
@@ -55,10 +55,10 @@ def find_breakpoints(regions, chrom, chrom2, bp, bp_number, options, cn):
     # TODO - Need to revert back to CN split read searching
     if cn and bp_guess[bp_g] > 3:
         bp = bp_g
-        print("%s adjusted to %s (%s split reads supporting)") % (bp_number, bp_g, bp_guess[bp])
+        print("%s adjusted to %s (%s split reads supporting)" % (bp_number, bp_g, bp_guess[bp]))
 
     elif not cn and bp_guess[bp_g] > bp_guess[bp] and bp_g != bp:
         bp = bp_g
-        print("%s adjusted to %s (%s split reads supporting)") % (bp_number, bp_g, bp_guess[bp])
+        print("%s adjusted to %s (%s split reads supporting)" % (bp_number, bp_g, bp_guess[bp]))
 
     return bp, svtype

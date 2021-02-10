@@ -12,6 +12,7 @@ o query_name             =   Read name (formaerly 'qname')
 
 """
 
+
 class TrackReads(object):
     def __init__(self, read, mate, chrom1, chrom2, duplicates):
 
@@ -20,7 +21,6 @@ class TrackReads(object):
         self.chrom1 = chrom1
         self.chrom2 = chrom2
         self.duplicates = duplicates
-
 
     def check_for_standard_dup(self):
         dupkey = '_'.join(map(str, [self.read.reference_start, self.read.reference_end, self.mate.reference_start]))
@@ -31,7 +31,6 @@ class TrackReads(object):
 
         return self.duplicates, dup
 
-
     def check_for_disc_dup(self):
         dupkey = '_'.join(map(str, [self.chrom1, self.read.reference_start, self.read.reference_end, self.chrom2, self.mate.reference_start]))
         dup = False
@@ -40,7 +39,6 @@ class TrackReads(object):
             dup = True
 
         return self.duplicates, dup
-
 
     def check_for_clipped_dup(self):
         dup = False

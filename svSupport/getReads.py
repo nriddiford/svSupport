@@ -26,7 +26,8 @@ def get_reads(bp_regions, bp_number, chrom, chrom2, bp, bp2, options, seen_reads
     bp_sig = defaultdict(int)
     contaminated_reads = 0
     read_tags = defaultdict(list)
-    if options.debug: print(" * Looking for reads supporting %s" % bp_number)
+    if options.debug:
+        print(" * Looking for reads supporting %s" % bp_number)
 
     with pysam.AlignmentFile(clipped_out, "wb", template=samfile) as clipped_reads, pysam.AlignmentFile(disc_out, "wb", template=samfile) as disc_reads, pysam.AlignmentFile(opposing_reads, "wb", template=samfile) as op_reads:
         split_reads = 0
@@ -112,7 +113,8 @@ def filterContamination(read, bp, options):
         sc_5, sc_3 = re.findall(r'(\d+)[S|H]\d+M(\d+)[S|H]', read.cigarstring)[0]
         skip_contaminated = True
         if sc_5 >= 5 and sc_3 >= 5:
-            if options.debug: print("Skipping double-clippped read %s" % (read.query_name))
+            if options.debug:
+                print("Skipping double-clippped read %s" % (read.query_name))
             if abs(read.reference_start - bp) < 100:
                 contaminated = True
     return skip_contaminated, contaminated
@@ -154,10 +156,12 @@ def getDisc(read, bp2, bp_sig, bp_number, direction, options, chrom2):
     if not read.is_proper_pair and (abs(read.next_reference_start - bp2) <= options.slop) and chrom2 == read.next_reference_name:
         if direction == 'r':
             bpID = '_'.join([bp_number, 'r'])
-            if options.debug: print("<---- discordant read supports breakpoints %s: %s") % (bp_number, read.query_name)
+            if options.debug:
+                print("<---- discordant read supports breakpoints %s: %s" % (bp_number, read.query_name))
         else:
             bpID = '_'.join(['r', bp_number])
-            if options.debug: print("----> discordant read supports breakpoints %s: %s") % (bp_number, read.query_name)
+            if options.debug:
+                print("----> discordant read supports breakpoints %s: %s" % (bp_number, read.query_name))
 
     if bpID:
         tag = ' '.join(['discordant', direction, 'read'])
@@ -174,17 +178,20 @@ def getAlienDNA(bpID, read, alien_integrant, chroms, bp, direction, options):
             sa_chrom = read.get_tag('SA').split(',')[0]
             if sa_chrom not in chroms:
                 alien_integrant[sa_chrom] += 1
-                if options.debug: print("Clipped reads partially aligns to non-reference chromosome: %s (%s)" % (sa_chrom, read.query_name))
+                if options.debug:
+                    print("Clipped reads partially aligns to non-reference chromosome: %s (%s)" % (sa_chrom, read.query_name))
         except:
             pass
 
     elif read.next_reference_name not in chroms and abs(read.reference_start - bp) <= 100:
         alienchrom = str(read.next_reference_name)
         if direction == 'f' and read.reference_start < bp:
-            if options.debug: print("forward read has mate mapped to non-reference chromosome: %s (%s)" % (read.next_reference_name, read.query_name))
+            if options.debug:
+                print("forward read has mate mapped to non-reference chromosome: %s (%s)" % (read.next_reference_name, read.query_name))
             alien_integrant[alienchrom] += 1
         elif direction == 'r' and read.reference_end > bp:
-            if options.debug: print("reverse read has mate mapped to non-reference chromosome: %s (%s)" % (read.next_reference_name, read.query_name))
+            if options.debug:
+                print("reverse read has mate mapped to non-reference chromosome: %s (%s)" % (read.next_reference_name, read.query_name))
             alien_integrant[alienchrom] += 1
 
     return alien_integrant
@@ -195,7 +202,8 @@ def getTaggedReads(bpID, read, te_tagged, bp, direction, options):
         try:
             sa_te = read.get_tag('AD').split(',')[0]
             sa_te = '_'.join(sa_te.split('_')[1:])
-            if options.debug: print("read has supplementary alignment to TE:", sa_te, read.query_name)
+            if options.debug:
+                print("read has supplementary alignment to TE:", sa_te, read.query_name)
             te_tagged[sa_te] += 1
         except KeyError:
             pass
@@ -204,10 +212,12 @@ def getTaggedReads(bpID, read, te_tagged, bp, direction, options):
         te = '_'.join(te.split('_')[1:])
 
         if direction == 'f' and read.reference_end <= bp:
-            if options.debug: print("foward read has mate in TE:", te, read.query_name)
+            if options.debug:
+                print("foward read has mate in TE:", te, read.query_name)
             te_tagged[te] += 1
         elif direction == 'r' and read.reference_start >= bp:
-            if options.debug: print("reverse read has mate in TE:", te, read.query_name)
+            if options.debug:
+                print("reverse read has mate in TE:", te, read.query_name)
             te_tagged[te] += 1
     except KeyError:
         pass
@@ -247,9 +257,9 @@ def rightClipped(read, direction, bp_number, options):
     if re.findall(r".*?M(\d+)[S|H]", read.cigarstring):
         if options.debug:
             if direction == 'f':
-                print("---> read clipped to right: %s --[-> %s") % (read.cigarstring, read.query_name)
+                print("---> read clipped to right: %s --[-> %s" % (read.cigarstring, read.query_name))
             else:
-                print("<--- read clipped to right: %s <--[- %s") % (read.cigarstring, read.query_name)
+                print("<--- read clipped to right: %s <--[- %s" % (read.cigarstring, read.query_name))
         bpID = '_'.join(['r', bp_number])
         return bpID
 
@@ -259,9 +269,9 @@ def leftClipped(read, direction, bp_number, options):
     if re.findall(r'(\d+)[S|H].*?M', read.cigarstring):
         if options.debug:
             if direction == 'f':
-                print("---> read clipped to left: %s -]--> %s") % (read.cigarstring, read.query_name)
+                print("---> read clipped to left: %s -]--> %s" % (read.cigarstring, read.query_name))
             else:
-                print("<--- read clipped to left: %s <-]-- %s") % (read.cigarstring, read.query_name)
+                print("<--- read clipped to left: %s <-]-- %s" % (read.cigarstring, read.query_name))
         bpID = '_'.join([bp_number, 'r'])
         return bpID
 

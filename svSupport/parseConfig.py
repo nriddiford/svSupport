@@ -26,11 +26,15 @@ def parse_config(options):
         options.sex = df.loc[i, 'sex']
         options.sv_type = df.loc[i, 'type']
 
-        if df.loc[i, 'notes'] == '-': df.loc[i, 'notes'] = ''
-        if df.loc[i, 'status'] == '-': df.loc[i, 'status'] = ''
+        if df.loc[i, 'notes'] == '-':
+            df.loc[i, 'notes'] = ''
+
+        if df.loc[i, 'status'] == '-':
+            df.loc[i, 'status'] = ''
 
         genotype = df.loc[i, 'genotype']
-        if genotype != 'somatic_tumour': continue
+        if genotype != 'somatic_tumour':
+            continue
 
         if df.loc[i, 'chromosome1'] != df.loc[i, 'chromosome2']:
             options.region = str(df.loc[i, 'chromosome1']) + ":" + str(df.loc[i, 'bp1']) + "-" + str(df.loc[i, 'chromosome2']) + ":" + str(df.loc[i, 'bp2'])
@@ -60,7 +64,8 @@ def parse_config(options):
         nstring = '; '.join(nlist)
         if df.loc[i, 'notes']:
             df.loc[i, 'notes'] = nstring + "; " + df.loc[i, 'notes']
-        else: df.loc[i, 'notes'] = nstring
+        else:
+            df.loc[i, 'notes'] = nstring
 
         df.loc[i, 'status'] = mark_filters(notes)
         df.loc[i, 'type'] = sv_type
@@ -74,7 +79,6 @@ def parse_config(options):
         df.loc[i, 'allele_frequency'] = af
         df.loc[i, 'bp1'] = bp1
         df.loc[i, 'bp2'] = bp2
-
 
         if df.loc[i, 'chromosome1'] != df.loc[i, 'chromosome2']:
             df.loc[i, 'position'] = str(df.loc[i, 'chromosome1']) + ":" + str(bp1) + " " + str(df.loc[i, 'chromosome2']) + ":" + str(bp2)
@@ -118,6 +122,7 @@ def mark_filters(notes):
             if f in n:
                 return 'F'
 
+
 def mergeAll(options, sample):
     su = []
     op = []
@@ -148,3 +153,4 @@ def mergeAll(options, sample):
         rmDups(opmerged, merged_op_nodups, options.out_dir)
         rmDups(remerged, merged_regs_nodups, options.out_dir)
 
+    return True

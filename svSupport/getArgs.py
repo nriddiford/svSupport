@@ -114,6 +114,6 @@ def get_args():
 
     if (options.in_file is None or options.region is None) and not options.test and not options.config:
         parser.print_help()
-        print
+        print()
 
     return (options, args)

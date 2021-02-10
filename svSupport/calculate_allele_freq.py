@@ -82,7 +82,7 @@ class AlleleFrequency(object):
                 af = round(af, 2)
 
         log2_rd_ratio = round(math.log(r2, 2), 2)
-        print("* Log2, purity-adjusted read depth ratio = %s " % log2_rd_ratio )
+        print("* Log2, purity-adjusted read depth ratio = %s " % log2_rd_ratio)
         print("* Allele frequency adjusted from %s to %s" % (af, adjaf))
 
         return af, adjaf, r2, log2_rd_ratio

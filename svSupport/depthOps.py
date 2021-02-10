@@ -2,6 +2,7 @@ from __future__ import division
 import pysam
 from getReads import filterContamination
 
+
 def get_depth(bam_in, normal, chrom, bp1, bp2, chroms, notes, options, chrom_dict):
     """Get the number of mapped reads in both t and n bams accross all chroms
        Then get the number of mapped reads within the CNV region
@@ -73,7 +74,7 @@ def count_reads(bamfile, chromosomes):
             total_mapped_chrom[chrom] = int(mapped)
             total_mapped += int(mapped)
 
-    print("Total number of mapped reads on chroms %s %s: %s") % (chromosomes, bamfile, total_mapped)
+    print("Total number of mapped reads on chroms %s %s: %s" % (chromosomes, bamfile, total_mapped))
     return total_mapped_chrom, total_mapped
 
 
@@ -93,8 +94,8 @@ def region_depth(bamfile, chrom, bp1, bp2, options):
         elif read.mapq < 3:
             continue
 
-        conaminated_read, contaminated_at_bp = filterContamination(read, bp1, options)
-        if conaminated_read:
+        contaminated_read, contaminated_at_bp = filterContamination(read, bp1, options)
+        if contaminated_read:
             contamination_count += 1
             continue
 

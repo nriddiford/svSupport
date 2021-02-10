@@ -27,21 +27,22 @@ def classify_sv(bp1_sig, bp2_sig):
 
 def classify_cnv(chrom, rdr, sex):
     if chrom in ['X', 'Y'] and sex == 'XY':
-        if (rdr < 1):
+        if rdr < 1:
             cnv_type = 'Homozygous deletion'
-        elif (rdr >= 3):
+        elif rdr >= 3:
             cnv_type = 'Homozygous triplication'
-        elif (rdr >= 1):
+        elif rdr >= 1:
             cnv_type = 'Homozygous duplication'
     else:
-        if (rdr <= 0.3):
+        if rdr <= 0.3:
             cnv_type = 'Homozygous deletion'
-        elif (rdr <= 1):
+        elif rdr <= 1:
             cnv_type = 'Heterozygous deletion'
-        elif (rdr >= 2):
+        elif rdr >= 2:
             cnv_type = 'Heterozygous triplication'
-        elif (rdr > 1):
+        elif rdr > 1:
             cnv_type = 'Heterozygous duplication'
 
     print("%s on %s" % (cnv_type, chrom))
+
     return cnv_type

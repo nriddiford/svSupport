@@ -12,7 +12,7 @@ def merge_bams(out_file, out_dir, bams):
     rm_bams(bams)
 
     in_files = ', '.join(s_bams)
-    print("Merging bam files %s into '%s'") % (in_files, out_file)
+    print("Merging bam files %s into '%s'" % (in_files, out_file))
     merge_parameters = ['-f', out_file] + s_bams
     pysam.merge(*merge_parameters)
 

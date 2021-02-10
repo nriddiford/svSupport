@@ -46,7 +46,8 @@ def worker(options):
     if debug:
         print_options(bam_in, normal, chrom1, bp1, bp2, find_bps, debug, options.test, out_dir)
 
-    if options.config: print(options)
+    if options.config:
+        print(options)
 
     chroms = []
     notes = []
@@ -64,7 +65,8 @@ def worker(options):
         old_af, allele_frequency, adj_ratio, rd_ratio = af.read_depth_af()
         cnv_type = classify_cnv(chrom1, adj_ratio, options.sex)
 
-        if notes: print(notes)
+        if notes:
+            print(notes)
 
         return bp1, bp2, old_af, allele_frequency, cnv_type, rd_ratio, notes, None, None
 
@@ -216,7 +218,8 @@ def worker(options):
     for integrant in alien1, te1, alien2, te2:
         add_note(notes, integrant)
 
-    if notes: print(notes)
+    if notes:
+        print(notes)
 
     return bp1, bp2, old_af, allele_frequency, sv_type, configuration, notes, split_support, disc_support
 
