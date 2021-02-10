@@ -25,8 +25,8 @@ function getBase(){
 bamdir=/Volumes/perso/Analysis/Bwa
 #variants=/Users/Nick_curie/Desktop/parserTest/filtered_delta_22120/summary/merged
 variants=/Users/Nick_curie/Desktop/parserTest/filtered_231018/summary/merged
-out_dir=/Users/Nick_curie/Desktop/script_test/svSupport/out
-purity=/Users/Nick_curie/Desktop/script_test/svSupport/data/tumour_purity.txt
+out_dir=/Users/Nick_curie/GitHub/svSupport/out
+purity=/Users/Nick_curie/GitHub/svSupport/data/tumour_purity.txt
 script_bin=$(pwd)
 echo $script_bin
 makeConfig=0
