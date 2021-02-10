@@ -177,6 +177,12 @@ def worker(options):
         disc_support = 0
         split_support = len(supporting)
 
+    if not split_support:
+        split_support = 0
+
+    if not disc_support:
+        disc_support = 0
+
     print("Variant is supported by %s split reads and %s discordant read pairs" % (split_support, disc_support))
     total_support = split_support + disc_support
     total_oppose = len(set(opposing))
