@@ -59,6 +59,8 @@ then
     sample=$(getBase $f)
     echo "Making config for $sample"
     python $script_bin/scripts/makeConfig.py -b $bamdir -p $purity -v $f -s $sample
+    echo "Finished making config for $sample"
+
   done
 fi
 
@@ -70,5 +72,6 @@ then
     echo "Running svSupport for $sample:"
     echo "python $script_bin/svSupport/svSupport.py -c $c -o $out_dir/$sample"
     python $script_bin/svSupport/svSupport.py -c $c -o "$out_dir/$sample"
+    echo "Finished running svSupport for $sample"
   done
 fi

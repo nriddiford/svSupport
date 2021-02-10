@@ -39,6 +39,7 @@ def make_config(options):
 
         df.to_csv(options.outfile, sep="\t", index=False)
 
+    return True
 
 def get_purity(options):
     with open(options.purity_file, 'r') as purity_file:
@@ -70,6 +71,8 @@ def get_group(sample):
         bamgroup = 'A785'
     elif group == 'D050' and len(t_id.split('-')) == 1 and int(t_id) >= 10:
         bamgroup = 'D050k'
+    elif group == 'A4sim':
+        bamgroup = 'A4'
     else:
         bamgroup = group
 
@@ -133,7 +136,7 @@ def getbam(bam_dir, bamgroup, group, t_id):
         normal_bam = group + "R" + str(n_id) + '.tagged.filt.SC.RG.bam'
         sample_bam = group + "R" + str(t_id) + '.tagged.filt.SC.RG.bam'
 
-    print("Normal: %s Tum: %s", (normal_bam, sample_bam))
+    print("Normal: %s\nTum: %s" % (normal_bam, sample_bam))
     sample_bam = os.path.join(bam_dir, bamgroup, sample_bam)
     normal_bam = os.path.join(bam_dir, bamgroup, normal_bam)
 
@@ -144,15 +147,10 @@ def get_args():
     parser = OptionParser()
 
     parser.add_option("-b", "--bam_dir", dest="bam_dir", action="store", help="Directory containing per-sample bam directories")
-
     parser.add_option("-v", "--variants", dest="variants", action="store", help="Variants file (as produced by svParser)", metavar="FILE")
-
     parser.add_option("-p", "--purity_file", dest="purity_file", action="store", help="File containing 'sample [tab] tumour' purity estimates", metavar="FILE")
-
     parser.add_option("-s", "--sample", dest="sample", action="store", help="Sample name")
-
     parser.add_option("-o", "--outfile", dest="outfile", action="store", help="File to annotated variants file to")
-
     parser.set_defaults(bam_dir='/Volumes/perso/Analysis/Bwa', outfile='/data/config.txt', purity_file='/data/tumour_purity.txt')
 
     options, args = parser.parse_args()
@@ -166,9 +164,9 @@ def get_args():
 
     if options.sample is None:
         options.sample = ntpath.basename(options.variants).split('_')[0]
-        print("Extracting sample name from in file: %s" % (options.sample))
+        print("Extracting sample name from in file: %s" % options.sample)
 
-    return (options, args)
+    return options, args
 
 
 def main():
