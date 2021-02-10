@@ -112,9 +112,9 @@ def filterContamination(read, bp, options):
     if re.findall(r'(\d+)[S|H]\d+M(\d+)[S|H]', read.cigarstring):
         sc_5, sc_3 = re.findall(r'(\d+)[S|H]\d+M(\d+)[S|H]', read.cigarstring)[0]
         skip_contaminated = True
-        if sc_5 >= 5 and sc_3 >= 5:
+        if int(sc_5) >= 5 and int(sc_3) >= 5:
             if options.debug:
-                print("Skipping double-clippped read %s" % (read.query_name))
+                print("Skipping double-clippped read %s" % read.query_name)
             if abs(read.reference_start - bp) < 100:
                 contaminated = True
     return skip_contaminated, contaminated

@@ -57,7 +57,7 @@ def parse_config(options):
 
         oaf = '='.join(map(str, ["unadj_af", old_af]))
         osv = '='.join(map(str, ["svtype", options.sv_type]))
-        nlist = filter(None, notes)
+        nlist = list(filter(None, notes))
         nlist.insert(0, oaf)
         nlist.insert(0, osv)
         print(nlist)
