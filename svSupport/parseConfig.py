@@ -70,8 +70,10 @@ def parse_config(options):
         df.loc[i, 'status'] = mark_filters(notes)
         df.loc[i, 'type'] = sv_type
 
-        if split_support is not None: df.loc[i, 'split_reads'] = split_support
-        if disc_support is not None: df.loc[i, 'disc_reads'] = disc_support
+        if split_support is not None:
+            df.loc[i, 'split_reads'] = split_support
+        if disc_support is not None:
+            df.loc[i, 'disc_reads'] = disc_support
 
         # TODO - this adds a new col for unadjusted af 2.7.20. Need to fix downstream. Might be better to just add to notes...
 
@@ -96,7 +98,7 @@ def parse_config(options):
 
 
 def mark_low_FC(notes, sex, fc, sv_type, chrom, split_support):
-    if split_support >= 5:
+    if split_support and int(split_support) >= 5:
         return notes
     elif split_support:
         hom_pass = 0.2

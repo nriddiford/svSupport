@@ -182,10 +182,12 @@ def filter_reads(bp_regions, bp1, bp2, c1, c2, sv_type, options, supporting, opp
                 continue
 
             if read.query_name in supporting:
-                if options.debug: print("[>] Writing read: %s" % (read.query_name))
+                if options.debug:
+                    print("[>] Writing read: %s" % (read.query_name))
                 cleaned.write(read)
                 if mate:
-                    if options.debug: print("[>] Writing mate: %s" % (read.query_name))
+                    if options.debug:
+                        print("[>] Writing mate: %s" % (read.query_name))
                     cleaned.write(mate)
             # if read.query_name in supplementary_clipped:
             #     if options.debug: print("-> Writing read: %s" % (read.query_name))
