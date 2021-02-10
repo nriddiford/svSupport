@@ -9,11 +9,17 @@ sys.dont_write_bytecode = True
 def make_config(options):
     options.outfile = options.sample + '_config.txt'
 
+    chroms = ['2L', '2R', '3L', '3R', '4', 'X', 'Y']
+
     with open(options.variants, 'r') as variants:
         purity = get_purity(options)
         sample, group, bamgroup, t_id = get_group(options.sample)
         sample_bam, normal_bam = getbam(options.bam_dir, bamgroup, group, t_id)
         df = pd.read_csv(variants, delimiter="\t", index_col=False)
+
+        # if options.exclude_chroms:
+        df = df.loc[df['chromosome1'].isin(chroms)]
+        df = df.loc[df['chromosome2'].isin(chroms)]
 
         if len(df.index) == 0:
             sys.exit("No variants in file. Exiting")
@@ -40,6 +46,7 @@ def make_config(options):
         df.to_csv(options.outfile, sep="\t", index=False)
 
     return True
+
 
 def get_purity(options):
     with open(options.purity_file, 'r') as purity_file:
