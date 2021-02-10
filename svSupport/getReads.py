@@ -174,17 +174,17 @@ def getAlienDNA(bpID, read, alien_integrant, chroms, bp, direction, options):
             sa_chrom = read.get_tag('SA').split(',')[0]
             if sa_chrom not in chroms:
                 alien_integrant[sa_chrom] += 1
-                if options.debug: print "Clipped reads partially aligns to non-reference chromosome: %s (%s)" % (sa_chrom, read.query_name)
+                if options.debug: print("Clipped reads partially aligns to non-reference chromosome: %s (%s)" % (sa_chrom, read.query_name))
         except:
             pass
 
     elif read.next_reference_name not in chroms and abs(read.reference_start - bp) <= 100:
         alienchrom = str(read.next_reference_name)
         if direction == 'f' and read.reference_start < bp:
-            if options.debug: print "forward read has mate mapped to non-reference chromosome: %s (%s)" % (read.next_reference_name, read.query_name)
+            if options.debug: print("forward read has mate mapped to non-reference chromosome: %s (%s)" % (read.next_reference_name, read.query_name))
             alien_integrant[alienchrom] += 1
         elif direction == 'r' and read.reference_end > bp:
-            if options.debug: print "reverse read has mate mapped to non-reference chromosome: %s (%s)" % (read.next_reference_name, read.query_name)
+            if options.debug: print("reverse read has mate mapped to non-reference chromosome: %s (%s)" % (read.next_reference_name, read.query_name))
             alien_integrant[alienchrom] += 1
 
     return alien_integrant
@@ -195,7 +195,7 @@ def getTaggedReads(bpID, read, te_tagged, bp, direction, options):
         try:
             sa_te = read.get_tag('AD').split(',')[0]
             sa_te = '_'.join(sa_te.split('_')[1:])
-            if options.debug: print "read has supplementary alignment to TE:", sa_te, read.query_name
+            if options.debug: print("read has supplementary alignment to TE:", sa_te, read.query_name)
             te_tagged[sa_te] += 1
         except KeyError:
             pass
@@ -204,10 +204,10 @@ def getTaggedReads(bpID, read, te_tagged, bp, direction, options):
         te = '_'.join(te.split('_')[1:])
 
         if direction == 'f' and read.reference_end <= bp:
-            if options.debug: print "foward read has mate in TE:", te, read.query_name
+            if options.debug: print("foward read has mate in TE:", te, read.query_name)
             te_tagged[te] += 1
         elif direction == 'r' and read.reference_start >= bp:
-            if options.debug: print "reverse read has mate in TE:", te, read.query_name
+            if options.debug: print("reverse read has mate in TE:", te, read.query_name)
             te_tagged[te] += 1
     except KeyError:
         pass

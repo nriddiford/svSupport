@@ -46,7 +46,7 @@ def worker(options):
     if debug:
         print_options(bam_in, normal, chrom1, bp1, bp2, find_bps, debug, options.test, out_dir)
 
-    if options.config: print options
+    if options.config: print(options)
 
     chroms = []
     notes = []
@@ -232,7 +232,7 @@ def assessIntegration(alien, te, bp_number):
     ak = max(alien, key=alien.get)
 
     if alien[ak] > 1:
-        print " * Found %s reads supporting integration of foreign DNA at %s from source %s" % (alien[ak], bp_number, ak)
+        print(" * Found %s reads supporting integration of foreign DNA at %s from source %s" % (alien[ak], bp_number, ak))
         alien_string = '_'.join(map(str, [bp_number, ak, alien[ak]]))
     else:
         alien_string = None
@@ -241,7 +241,7 @@ def assessIntegration(alien, te, bp_number):
     tk = max(te, key=te.get)
 
     if tk and te[tk] > 1:
-        print " * Found %s %s-tagged reads at %s" % (te[tk], tk, bp_number)
+        print(" * Found %s %s-tagged reads at %s" % (te[tk], tk, bp_number))
         te_string = '_'.join(map(str, [bp_number, tk]))
         te_string = te_string + "=" + str(te[tk])
     else:
