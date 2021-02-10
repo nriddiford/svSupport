@@ -39,7 +39,7 @@ def sort_bam(out_dir, bam):
     except:
         print("Can't sort %s" % bam)
 
-    return(sorted_bam)
+    return sorted_bam
 
 
 def index_bam(bam):
@@ -55,10 +55,11 @@ def rm_bams(bams):
             os.remove(b)
         except OSError:
             print("* Couldn't remove %s" % b)
-            pass
+
         if os.path.isfile(b + ".bai"):
             try:
                 os.remove(b + ".bai")
             except OSError:
                 print("* Couldn't remove %s" % b + ".bai")
-                pass
+
+    return True

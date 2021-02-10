@@ -69,7 +69,7 @@ def count_reads(bamfile, chromosomes):
     total_mapped_chrom = {}
 
     for line in lines:
-        chrom, len, mapped, unmapped = line.split('\t')
+        chrom, length, mapped, unmapped = line.split('\t')
         if chrom in chromosomes:
             total_mapped_chrom[chrom] = int(mapped)
             total_mapped += int(mapped)
@@ -91,7 +91,7 @@ def region_depth(bamfile, chrom, bp1, bp2, options):
     for read in samfile.fetch(chrom, bp1, bp2):
         if read.is_unmapped:
             continue
-        elif read.mapq < 3:
+        if read.mapq < 3:
             continue
 
         contaminated_read, contaminated_at_bp = filterContamination(read, bp1, options)
@@ -106,5 +106,5 @@ def region_depth(bamfile, chrom, bp1, bp2, options):
         count += 1
 
     av_read_length = read_lengths/check_read_length
-    print("Reads in %s:%s-%s: %s") % (chrom, bp1, bp2, count)
+    print("Reads in %s:%s-%s: %s" % (chrom, bp1, bp2, count))
     return count, contamination_count, av_read_length

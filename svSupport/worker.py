@@ -299,33 +299,33 @@ def get_regions(bam_in, chrom1, bp1, chrom2, bp2, out_dir, options, chrom_dict):
         sorted_bam = sort_bam(out_dir, dups_rem)
         rm_bams([dups_rem])
         return sorted_bam, slop
-    else:
-        if chrom2 not in chrom_dict:
-            print("%s not in %s. Will not look for breakpoints in this region" % (chrom2, chrom_dict.keys()))
-            downsample = True
-            r_count = 0
 
-        bp2_bam = os.path.join(out_dir, "bp2_region" + ".bam")
+    if chrom2 not in chrom_dict:
+        print("%s not in %s. Will not look for breakpoints in this region" % (chrom2, chrom_dict.keys()))
+        downsample = True
+        r_count = 0
 
-        bp2_window_start, bp2_window_end = check_windows(bp2, chrom2, slop, samfile, chrom_dict)
+    bp2_bam = os.path.join(out_dir, "bp2_region" + ".bam")
 
-        with pysam.AlignmentFile(bp2_bam, "wb", template=samfile) as bp2_region:
-            if downsample:
-                bp2_region = None
-            else:
-                for read in samfile.fetch(chrom2, bp2_window_start, bp2_window_end):
-                    if downsample:
-                        r_count += 1
-                        if r_count > 100: break
-                    bp2_region.write(read)
+    bp2_window_start, bp2_window_end = check_windows(bp2, chrom2, slop, samfile, chrom_dict)
 
-        bps_bam = os.path.join(out_dir, "bp_regs" + ".bam")
-        regions = merge_bams(bps_bam, out_dir, [bp1_bam, bp2_bam])
+    with pysam.AlignmentFile(bp2_bam, "wb", template=samfile) as bp2_region:
+        if downsample:
+            bp2_region = None
+        else:
+            for read in samfile.fetch(chrom2, bp2_window_start, bp2_window_end):
+                if downsample:
+                    r_count += 1
+                    if r_count > 100: break
+                bp2_region.write(read)
 
-        bpID = '_'.join(map(str, [chrom1, bp1_window_start, chrom2, bp2_window_end]))
-        dups_rem = rmDups(regions, bpID + "_regions.bam", out_dir)
-        sorted_bam = sort_bam(out_dir, dups_rem)
-        rm_bams([dups_rem])
+    bps_bam = os.path.join(out_dir, "bp_regs" + ".bam")
+    regions = merge_bams(bps_bam, out_dir, [bp1_bam, bp2_bam])
+
+    bpID = '_'.join(map(str, [chrom1, bp1_window_start, chrom2, bp2_window_end]))
+    dups_rem = rmDups(regions, bpID + "_regions.bam", out_dir)
+    sorted_bam = sort_bam(out_dir, dups_rem)
+    rm_bams([dups_rem])
 
     return sorted_bam, slop
 

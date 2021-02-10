@@ -1,9 +1,9 @@
-import os, re
+import os
+import ntpath
 import pandas as pd
 from worker import worker
 from merge_bams import merge_bams
 from worker import rmDups
-import ntpath
 
 
 def parse_config(options):

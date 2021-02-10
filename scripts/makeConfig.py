@@ -21,6 +21,9 @@ def make_config(options):
         df = df.loc[df['chromosome1'].isin(chroms)]
         df = df.loc[df['chromosome2'].isin(chroms)]
 
+        df = df.loc[df['length(Kb)'] > 10]
+
+
         if len(df.index) == 0:
             sys.exit("No variants in file. Exiting")
 

@@ -2,7 +2,7 @@ import pysam
 from collections import defaultdict
 from trackReads import TrackReads
 from getReads import filterContamination, leftClipped, rightClipped
-import os, re
+import os
 
 
 def filter_reads(bp_regions, bp1, bp2, c1, c2, sv_type, options, supporting, opposing, bp1_sig, bp2_sig, read_tags):
@@ -59,7 +59,7 @@ def filter_reads(bp_regions, bp1, bp2, c1, c2, sv_type, options, supporting, opp
                 supporting = supporting_remove(read, supporting, options, 'clipped in wrong direction')
                 continue
 
-            elif read.is_proper_pair and not read_is_clipped and not read.query_name in supplementary_clipped:
+            if read.is_proper_pair and not read_is_clipped and not read.query_name in supplementary_clipped:
                 supporting = supporting_remove(read, supporting, options, 'not discordant or clipped')
                 continue
             else:
