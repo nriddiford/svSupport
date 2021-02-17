@@ -21,7 +21,7 @@ def make_config(options):
         df = df.loc[df['chromosome1'].isin(chroms)]
         df = df.loc[df['chromosome2'].isin(chroms)]
 
-        df = df.loc[df['length(Kb)'] > 10]
+        # df = df.loc[df['length(Kb)'] > 10]
 
 
         if len(df.index) == 0:
@@ -57,8 +57,8 @@ def get_purity(options):
             parts = l.rstrip().split('\t')
             if options.sample == parts[0]:
                 return parts[1]
-        print("Can't find corresponding purity for %s in %s" % (options.sample, options.purity_file))
-        print("Setting sample purity to 1")
+        print("-> Can't find corresponding purity for %s in %s" % (options.sample, options.purity_file))
+        print("-> Setting sample purity to 1")
         return 1
 
 
